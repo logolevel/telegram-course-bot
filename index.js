@@ -39,7 +39,7 @@ bot.start(async (ctx) => {
 	});
 	setTimeout(() => {
 		ctx.session.step1ButtonId = buttonMsg.message_id;
-	}, 5000);
+	}, 10000);
 });
 
 // Этап 2
@@ -68,7 +68,7 @@ bot.action('step1_done', async (ctx) => {
 	});
 	setTimeout(() => {
 		ctx.session.step2ButtonId = buttonMsg.message_id;
-	}, 5000);
+	}, 10000);
 });
 
 // Кнопка отправки фото — просто инструкция
@@ -155,7 +155,7 @@ bot.on('photo', async (ctx) => {
 
 		setTimeout(() => {
 			ctx.session.step3ButtonId = buttonMsg.message_id;
-		}, 5000);
+		}, 10000);
 	}
 });
 
@@ -193,7 +193,7 @@ bot.action('restart', async (ctx) => {
 	});
 	setTimeout(() => {
 		ctx.session.step1ButtonId = buttonMsg.message_id;
-	}, 5000);
+	}, 10000);
 });
 
 
