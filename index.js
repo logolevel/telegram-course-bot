@@ -75,11 +75,26 @@ bot.action('send_photo', async (ctx) => {
 bot.on('photo', async (ctx) => {
 	if (ctx.session.step === 2) {
 		const photo = ctx.message.photo.pop();
-		const targetUserId = adminId;
+		const userId = ctx.from.id;
+		const username = ctx.from.username;
 
 		try {
-			await ctx.telegram.sendPhoto(targetUserId, photo.file_id, {
-				caption: `Фото от пользователя ${ctx.from.id}`,
+			await ctx.telegram.sendPhoto(adminId, photo.file_id, {
+				caption: username
+					? `Фото от пользователя @${username}`
+					: `Фото от пользователя (ID: ${userId})`,
+				reply_markup: {
+					inline_keyboard: [[
+						{
+							text: username
+								? `Открыть чат с @${username}`
+								: `Открыть чат с ID ${userId}`,
+							url: username
+								? `https://t.me/${username}`
+								: `tg://user?id=${userId}`,
+						}
+					]]
+				}
 			});
 		} catch (err) {
 			console.error('Ошибка отправки фото:', err);
