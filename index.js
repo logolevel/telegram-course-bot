@@ -28,16 +28,18 @@ bot.start(async (ctx) => {
 	ctx.session.step = 1;
 
 	// Сохраняем ID видео-сообщения
-	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри видео' });
+	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри, пожалуйста, видео' });
 	ctx.session.step1VideoId = videoMsg.message_id;
 
 	// Сообщение с кнопкой "Далее"
-	const buttonMsg = await ctx.reply('Когда посмотришь — нажми кнопку «Далее»', {
+	const buttonMsg = await ctx.reply('Когда посмотришь — нажми, пожалуйста, кнопку «Далее»', {
 		reply_markup: {
 			inline_keyboard: [[{ text: 'Далее', callback_data: 'step1_done' }]],
 		},
 	});
-	ctx.session.step1ButtonId = buttonMsg.message_id;
+	setTimeout(() => {
+		ctx.session.step1ButtonId = buttonMsg.message_id;
+	}, 5000);
 });
 
 // Этап 2
@@ -54,22 +56,24 @@ bot.action('step1_done', async (ctx) => {
 
 	// Видео второго этапа
 	const videoMsg = await ctx.replyWithVideo(video2, {
-		caption: 'Этап 2: Посмотри видео',
+		caption: 'Этап 2: Посмотри, пожалуйста, второе видео',
 	});
 	ctx.session.step2VideoId = videoMsg.message_id;
 
 	// Кнопка "Отправить фото"
-	const buttonMsg = await ctx.reply('Когда будешь готов — отправь фото', {
+	const buttonMsg = await ctx.reply('Когда будешь готов — отправь фото своего рисунка', {
 		reply_markup: {
 			inline_keyboard: [[{ text: 'Отправить фото', callback_data: 'send_photo' }]],
 		},
 	});
-	ctx.session.step2ButtonId = buttonMsg.message_id;
+	setTimeout(() => {
+		ctx.session.step2ButtonId = buttonMsg.message_id;
+	}, 5000);
 });
 
 // Кнопка отправки фото — просто инструкция
 bot.action('send_photo', async (ctx) => {
-	await ctx.reply('Пожалуйста, отправь фотографию сообщением 📷');
+	await ctx.reply('Пожалуйста, прикрепи фотографию 📷 сообщением ⬇️ 📎');
 });
 
 function getUserContactInfo(user) {
@@ -138,13 +142,20 @@ bot.on('photo', async (ctx) => {
 
 		ctx.session.step = 3;
 		await ctx.replyWithVideo(video3, {
-			caption: 'Этап 3: Финальное видео и ссылка: https://example.com',
+			caption: 'Этап 3: Финальное видео'
+		});
+
+		const buttonMsg = await ctx.reply('Если понравилось, больше можно узнать тут: https://example.com', {
 			reply_markup: {
 				inline_keyboard: [[
 					{ text: 'Завершить', callback_data: 'finish_course' }
 				]]
 			}
 		});
+
+		setTimeout(() => {
+			ctx.session.step3ButtonId = buttonMsg.message_id;
+		}, 5000);
 	}
 });
 
