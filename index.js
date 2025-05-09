@@ -9,6 +9,10 @@ const video1 = 'BAACAgIAAxkBAAMDaBzV1qo0HMIY0_kM48OIZ1bRZeEAAiKCAAJuhuhIzHUqNWbJ
 const video2 = 'BAACAgIAAxkBAAMEaBzZK1T4cQ4e--QkxlBdVXQxOckAAg-DAAJuhuhI3zbkNVXIC482BA';
 const video3 = 'BAACAgIAAxkBAAMFaBzZkbsXNKEyOy_-d7-nknnitaYAApeDAAJuhuhIRwGRAAFJfFTKNgQ';
 
+const video1TimeOut = 10000;
+const video2TimeOut = 26000;
+const video3TimeOut = 33000;
+
 const adminID = '373532023';
 const adminUserName = '@dzaviriukha';
 
@@ -26,7 +30,7 @@ bot.start(async (ctx) => {
 	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри, пожалуйста, видео' });
 	ctx.session.step1VideoId = videoMsg.message_id;
 
-	await new Promise(resolve => setTimeout(resolve, 10000));
+	await new Promise(resolve => setTimeout(resolve, video1TimeOut));
 
 	const buttonMsg = await ctx.reply('Когда посмотришь — нажми, пожалуйста, кнопку «Далее»', {
 		reply_markup: {
@@ -51,6 +55,8 @@ bot.action('step1_done', async (ctx) => {
 		caption: 'Этап 2: Посмотри, пожалуйста, второе видео',
 	});
 	ctx.session.step2VideoId = videoMsg.message_id;
+
+	await new Promise(resolve => setTimeout(resolve, video2TimeOut));
 
 	const buttonMsg = await ctx.reply('Когда будешь готов — отправь фото своего рисунка', {
 		reply_markup: {
@@ -155,6 +161,8 @@ bot.action('show_final_video', async (ctx) => {
 	});
 	ctx.session.step3VideoId = videoMsg.message_id;
 
+	await new Promise(resolve => setTimeout(resolve, video3TimeOut));
+
 	const buttonMsg = await ctx.reply('Если понравилось, больше можно узнать тут: https://example.com', {
 		reply_markup: {
 			inline_keyboard: [[
@@ -196,6 +204,7 @@ bot.action('restart', async (ctx) => {
 	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри, пожалуйста, видео' });
 	ctx.session.step1VideoId = videoMsg.message_id;
 
+	await new Promise(resolve => setTimeout(resolve, video1TimeOut));
 	const buttonMsg = await ctx.reply('Когда посмотришь — нажми, пожалуйста, кнопку «Далее»', {
 		reply_markup: {
 			inline_keyboard: [[{ text: 'Далее', callback_data: 'step1_done' }]],
