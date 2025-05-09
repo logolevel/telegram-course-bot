@@ -141,9 +141,11 @@ bot.on('photo', async (ctx) => {
 		}
 
 		ctx.session.step = 3;
-		await ctx.replyWithVideo(video3, {
+		// Видео третьего этапа
+		const videoMsg = await ctx.replyWithVideo(video3, {
 			caption: 'Этап 3: Финальное видео'
 		});
+		ctx.session.step3VideoId = videoMsg.message_id;
 
 		const buttonMsg = await ctx.reply('Если понравилось, больше можно узнать тут: https://example.com', {
 			reply_markup: {
@@ -162,6 +164,10 @@ bot.on('photo', async (ctx) => {
 bot.action('finish_course', async (ctx) => {
 	try {
 		await ctx.deleteMessage(); // Удаляем финальное видео
+
+		// Удаляем сообщения этапа 3
+		if (ctx.session.step3VideoId) await ctx.deleteMessage(ctx.session.step3VideoId);
+		if (ctx.session.step3ButtonId) await ctx.deleteMessage(ctx.session.step3ButtonId);
 
 		ctx.session.step = 0; // Сброс шага
 
