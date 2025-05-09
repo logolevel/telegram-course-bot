@@ -25,28 +25,50 @@ bot.start(async (ctx) => {
 	ctx.session.step = 1;
 	await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри видео' });
 
-	setTimeout(() => {
-		ctx.reply('Когда посмотришь — нажми кнопку «Далее»', {
-			reply_markup: {
-				inline_keyboard: [[{ text: 'Далее', callback_data: 'step1_done' }]],
-			},
-		});
-	}, 10000);
+	const msg = await ctx.reply('Когда посмотришь — нажми кнопку «Далее»', {
+		reply_markup: {
+			inline_keyboard: [[{ text: 'Далее', callback_data: 'step1_done' }]],
+		},
+	});
+
+	ctx.session.step1MessageId = msg.message_id; // запомним ID сообщения для удаления
 });
 
-// Этап 2
+// Этап 2: после нажатия «Далее»
 bot.action('step1_done', async (ctx) => {
+	try {
+		// Удалим сообщение с кнопкой «Далее»
+		if (ctx.session.step1MessageId) {
+			await ctx.deleteMessage(ctx.session.step1MessageId);
+		}
+	} catch (e) {
+		console.warn('Не удалось удалить сообщение этапа 1:', e.message);
+	}
+
 	ctx.session.step = 2;
 	await ctx.replyWithVideo(video2, {
-		caption: 'Этап 2: Посмотри видео и отправь картинку.',
+		caption: 'Этап 2: Посмотри видео',
+	});
+
+	// Добавим кнопку «Отправить фото»
+	await ctx.reply('Когда будешь готов — отправь фото', {
+		reply_markup: {
+			inline_keyboard: [[{ text: 'Отправить фото', callback_data: 'send_photo' }]],
+		},
 	});
 });
 
-// Принимаем фото от пользователя
+// Инструкция по отправке фото
+bot.action('send_photo', async (ctx) => {
+	await ctx.reply('Пожалуйста, отправь фотографию прямо сюда сообщением 📷');
+});
+
+// Приём фото
 bot.on('photo', async (ctx) => {
 	if (ctx.session.step === 2) {
 		const photo = ctx.message.photo.pop();
-		const targetUsername = 'dzaviriukha'; // можно заменить на user ID
+		const targetUsername = '@dzaviriukha'; // или user ID
+
 		try {
 			await ctx.telegram.sendPhoto(targetUsername, photo.file_id, {
 				caption: `Фото от пользователя @${ctx.from.username || ctx.from.id}`,
