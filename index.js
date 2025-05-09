@@ -2,36 +2,27 @@ require('dotenv').config();
 const { Telegraf, session } = require('telegraf');
 const express = require('express');
 
-// Создаём экземпляры бота и Express
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
 
-// Видеофайлы из Telegram (File_ID)
 const video1 = 'BAACAgIAAxkBAAMDaBzV1qo0HMIY0_kM48OIZ1bRZeEAAiKCAAJuhuhIzHUqNWbJSW42BA';
 const video2 = 'BAACAgIAAxkBAAMEaBzZK1T4cQ4e--QkxlBdVXQxOckAAg-DAAJuhuhI3zbkNVXIC482BA';
 const video3 = 'BAACAgIAAxkBAAMFaBzZkbsXNKEyOy_-d7-nknnitaYAApeDAAJuhuhIRwGRAAFJfFTKNgQ';
 
-const adminID = '373532023'; // ID администратора кому отправлять фото
+const adminID = '373532023';
 const adminUserName = '@dzaviriukha';
 
-// Используем сессии
 bot.use(session());
 
-// 🔧 Добавляем middleware для инициализации ctx.session
 bot.use((ctx, next) => {
 	if (!ctx.session) ctx.session = {};
 	return next();
 });
 
-// Этап 1
 bot.start(async (ctx) => {
 	ctx.session.step = 1;
-
-	// Сохраняем ID видео-сообщения
 	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри, пожалуйста, видео' });
 	ctx.session.step1VideoId = videoMsg.message_id;
-
-	// Сообщение с кнопкой "Далее"
 	const buttonMsg = await ctx.reply('Когда посмотришь — нажми, пожалуйста, кнопку «Далее»', {
 		reply_markup: {
 			inline_keyboard: [[{ text: 'Далее', callback_data: 'step1_done' }]],
@@ -42,9 +33,7 @@ bot.start(async (ctx) => {
 	}, 10000);
 });
 
-// Этап 2
 bot.action('step1_done', async (ctx) => {
-	// Удалим старые сообщения (видео и кнопку)
 	try {
 		if (ctx.session.step1VideoId) await ctx.deleteMessage(ctx.session.step1VideoId);
 		if (ctx.session.step1ButtonId) await ctx.deleteMessage(ctx.session.step1ButtonId);
@@ -53,14 +42,11 @@ bot.action('step1_done', async (ctx) => {
 	}
 
 	ctx.session.step = 2;
-
-	// Видео второго этапа
 	const videoMsg = await ctx.replyWithVideo(video2, {
 		caption: 'Этап 2: Посмотри, пожалуйста, второе видео',
 	});
 	ctx.session.step2VideoId = videoMsg.message_id;
 
-	// Кнопка "Отправить фото"
 	const buttonMsg = await ctx.reply('Когда будешь готов — отправь фото своего рисунка', {
 		reply_markup: {
 			inline_keyboard: [[{ text: 'Отправить фото', callback_data: 'send_photo' }]],
@@ -71,15 +57,14 @@ bot.action('step1_done', async (ctx) => {
 	}, 10000);
 });
 
-// Кнопка отправки фото — просто инструкция
 bot.action('send_photo', async (ctx) => {
-	await ctx.reply('Пожалуйста, прикрепи фотографию 📷 сообщением ⬇️ 📎');
+	const msg = await ctx.reply('Пожалуйста, прикрепи фотографию 📷 сообщением ⬇️ 📎');
+	ctx.session.sendPhotoInstructionId = msg.message_id;
 });
 
 function getUserContactInfo(user) {
 	const userId = user.id;
 	const username = user.username;
-
 	let caption = '';
 	let replyMarkup;
 
@@ -100,12 +85,9 @@ function getUserContactInfo(user) {
 	return { caption, reply_markup: replyMarkup };
 }
 
-
-// Обработка фото
 bot.on('photo', async (ctx) => {
 	if (ctx.session.step === 2) {
 		const photo = ctx.message.photo.pop();
-
 		const { caption, reply_markup } = getUserContactInfo(ctx.from);
 
 		try {
@@ -114,11 +96,9 @@ bot.on('photo', async (ctx) => {
 				reply_markup,
 			});
 
-			// --- Отправка пользователю обратно ---
 			if (ctx.from.username) {
 				await ctx.reply('Вы отправили это фото. Мы получили его и скоро свяжемся с вами ✉️');
 			} else {
-				// У пользователя нет username — просим написать администратору
 				await ctx.reply(`Вы отправили это фото, но у нас нет возможности написать вам первыми 😕\n\nЕсли хотите обсудить — напишите нам напрямую: ${adminUserName}`);
 			}
 		} catch (err) {
@@ -127,7 +107,15 @@ bot.on('photo', async (ctx) => {
 			return;
 		}
 
-		// Удаляем сообщения этапа 2
+		if (ctx.session.sendPhotoInstructionId) {
+			try {
+				await ctx.deleteMessage(ctx.session.sendPhotoInstructionId);
+				ctx.session.sendPhotoInstructionId = null;
+			} catch (e) {
+				console.warn('Ошибка при удалении инструкции к фото:', e.message);
+			}
+		}
+
 		try {
 			if (ctx.session.step2VideoId) await ctx.deleteMessage(ctx.session.step2VideoId);
 			if (ctx.session.step2ButtonId) await ctx.deleteMessage(ctx.session.step2ButtonId);
@@ -136,39 +124,46 @@ bot.on('photo', async (ctx) => {
 		}
 
 		ctx.session.step = 3;
-		// Видео третьего этапа
-		const videoMsg = await ctx.replyWithVideo(video3, {
-			caption: 'Этап 3: Финальное видео'
-		});
-		ctx.session.step3VideoId = videoMsg.message_id;
 
-		const buttonMsg = await ctx.reply('Если понравилось, больше можно узнать тут: https://example.com', {
+		const buttonMsg = await ctx.reply('Финальный шаг! Нажми, чтобы посмотреть видео заключающего этапа 🎬', {
 			reply_markup: {
-				inline_keyboard: [[
-					{ text: 'Завершить', callback_data: 'finish_course' }
-				]]
+				inline_keyboard: [[{ text: 'Посмотреть видео', callback_data: 'show_final_video' }]]
 			}
 		});
-
-		setTimeout(() => {
-			ctx.session.step3ButtonId = buttonMsg.message_id;
-		}, 10000);
+		ctx.session.showFinalVideoButtonId = buttonMsg.message_id;
 	}
+});
+
+bot.action('show_final_video', async (ctx) => {
+	if (ctx.session.showFinalVideoButtonId) {
+		try {
+			await ctx.deleteMessage(ctx.session.showFinalVideoButtonId);
+		} catch (e) {
+			console.warn('Ошибка удаления кнопки показа финального видео:', e.message);
+		}
+	}
+
+	const videoMsg = await ctx.replyWithVideo(video3, {
+		caption: 'Этап 3: Финальное видео',
+	});
+	ctx.session.step3VideoId = videoMsg.message_id;
+
+	const buttonMsg = await ctx.reply('Если понравилось, больше можно узнать тут: https://example.com', {
+		reply_markup: {
+			inline_keyboard: [[{ text: 'Завершить', callback_data: 'finish_course' }]]
+		}
+	});
+	ctx.session.step3ButtonId = buttonMsg.message_id;
 });
 
 bot.action('finish_course', async (ctx) => {
 	try {
-		// Удаляем сообщения этапа 3
 		if (ctx.session.step3VideoId) await ctx.deleteMessage(ctx.session.step3VideoId);
 		if (ctx.session.step3ButtonId) await ctx.deleteMessage(ctx.session.step3ButtonId);
-
-		ctx.session.step = 0; // Сброс шага
-
+		ctx.session.step = 0;
 		await ctx.reply('Спасибо, что познакомился с курсом! 🎉', {
 			reply_markup: {
-				inline_keyboard: [[
-					{ text: 'Пройти заново', callback_data: 'restart' }
-				]]
+				inline_keyboard: [[{ text: 'Пройти заново', callback_data: 'restart' }]]
 			}
 		});
 	} catch (error) {
@@ -177,14 +172,10 @@ bot.action('finish_course', async (ctx) => {
 });
 
 bot.action('restart', async (ctx) => {
-	await ctx.answerCbQuery(); // закрыть "крутилку"
+	await ctx.answerCbQuery();
 	ctx.session.step = 1;
-
-	// Сохраняем ID видео-сообщения
 	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри, пожалуйста, видео' });
 	ctx.session.step1VideoId = videoMsg.message_id;
-
-	// Сообщение с кнопкой "Далее"
 	const buttonMsg = await ctx.reply('Когда посмотришь — нажми, пожалуйста, кнопку «Далее»', {
 		reply_markup: {
 			inline_keyboard: [[{ text: 'Далее', callback_data: 'step1_done' }]],
@@ -195,14 +186,9 @@ bot.action('restart', async (ctx) => {
 	}, 10000);
 });
 
-
-
-
-// Настройка webhook
 app.use(bot.webhookCallback('/secret-path'));
 bot.telegram.setWebhook(`${process.env.BOT_URL}/secret-path`);
 
-// Запуск Express-сервера
 app.listen(process.env.PORT || 3000, () => {
 	console.log('Бот запущен на Railway');
 });
