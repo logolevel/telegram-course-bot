@@ -199,6 +199,8 @@ bot.action('restart', async (ctx) => {
 		ctx.session.finishMessageId = null;
 	}
 
+	await ctx.reply('⬇️ Повторение - мать ученья 😃 ⬇️');
+
 	ctx.session.step = 1;
 
 	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри, пожалуйста, видео' });
