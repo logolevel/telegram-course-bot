@@ -67,10 +67,10 @@ bot.action('send_photo', async (ctx) => {
 bot.on('photo', async (ctx) => {
 	if (ctx.session.step === 2) {
 		const photo = ctx.message.photo.pop();
-		const targetUsername = '@dzaviriukha'; // или user ID
+		const targetUserID = '373532023'; // или user ID
 
 		try {
-			await ctx.telegram.sendPhoto(targetUsername, photo.file_id, {
+			await ctx.telegram.sendPhoto(targetUserID, photo.file_id, {
 				caption: `Фото от пользователя @${ctx.from.username || ctx.from.id}`,
 			});
 		} catch (err) {
