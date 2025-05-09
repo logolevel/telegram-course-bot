@@ -158,8 +158,6 @@ bot.on('photo', async (ctx) => {
 
 bot.action('finish_course', async (ctx) => {
 	try {
-		await ctx.deleteMessage(); // Удаляем финальное видео
-
 		// Удаляем сообщения этапа 3
 		if (ctx.session.step3VideoId) await ctx.deleteMessage(ctx.session.step3VideoId);
 		if (ctx.session.step3ButtonId) await ctx.deleteMessage(ctx.session.step3ButtonId);
