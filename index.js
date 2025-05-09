@@ -27,14 +27,14 @@ bot.use((ctx, next) => {
 bot.start(async (ctx) => {
 	ctx.session.step = 1;
 
-	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри, пожалуйста, видео' });
+	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри, пожалуйста, это видео' });
 	ctx.session.step1VideoId = videoMsg.message_id;
 
 	await new Promise(resolve => setTimeout(resolve, video1TimeOut));
 
-	const buttonMsg = await ctx.reply('Когда посмотришь — нажми, пожалуйста, кнопку «Далее»', {
+	const buttonMsg = await ctx.reply('Когда закончишь просмотр — взгляни, пожалуйста, на «Сообщение от Анастасии»', {
 		reply_markup: {
-			inline_keyboard: [[{ text: 'Далее', callback_data: 'step1_done' }]],
+			inline_keyboard: [[{ text: 'Сообщение от Анастасии', callback_data: 'step1_done' }]],
 		},
 	});
 	ctx.session.step1ButtonId = buttonMsg.message_id;
@@ -52,7 +52,7 @@ bot.action('step1_done', async (ctx) => {
 	ctx.session.step = 2;
 
 	const videoMsg = await ctx.replyWithVideo(video2, {
-		caption: 'Этап 2: Посмотри, пожалуйста, второе видео',
+		caption: 'Этап 2: Это видео с Настей',
 	});
 	ctx.session.step2VideoId = videoMsg.message_id;
 
@@ -60,7 +60,7 @@ bot.action('step1_done', async (ctx) => {
 
 	const buttonMsg = await ctx.reply('Когда будешь готов — отправь фото своего рисунка', {
 		reply_markup: {
-			inline_keyboard: [[{ text: 'Отправить фото', callback_data: 'send_photo' }]],
+			inline_keyboard: [[{ text: 'Отправить фото своего рисунка', callback_data: 'send_photo' }]],
 		},
 	});
 	ctx.session.step2ButtonId = buttonMsg.message_id;
@@ -80,14 +80,14 @@ function getUserContactInfo(user) {
 	let replyMarkup;
 
 	if (username) {
-		caption = `Фото от пользователя @${username}`;
+		caption = `Рисунок от пользователя @${username}`;
 		replyMarkup = {
 			inline_keyboard: [[
 				{ text: `Открыть чат с @${username}`, url: `https://t.me/${username}` }
 			]]
 		};
 	} else {
-		caption = `Фото от пользователя без username\ntg://user?id=${userId}`;
+		caption = `Рисунок от пользователя без username\ntg://user?id=${userId}, скорее всего не откроется, т.к. пользователь не указал username`;
 	}
 
 	return { caption, reply_markup: replyMarkup };
@@ -137,9 +137,9 @@ bot.on('photo', async (ctx) => {
 		ctx.session.step = 3;
 
 		// Кнопка для показа видео 3 этапа
-		const buttonMsg = await ctx.reply('Финальный шаг! Нажми, чтобы посмотреть видео заключающего этапа 🎬', {
+		const buttonMsg = await ctx.reply('Финальный шаг! Нажми, пожалуйста, чтобы посмотреть видео заключающего этапа 🎬', {
 			reply_markup: {
-				inline_keyboard: [[{ text: 'Посмотреть видео', callback_data: 'show_final_video' }]]
+				inline_keyboard: [[{ text: 'Посмотреть финальное видео', callback_data: 'show_final_video' }]]
 			}
 		});
 		ctx.session.showFinalVideoButtonId = buttonMsg.message_id;
@@ -163,7 +163,7 @@ bot.action('show_final_video', async (ctx) => {
 
 	await new Promise(resolve => setTimeout(resolve, video3TimeOut));
 
-	const buttonMsg = await ctx.reply('Если понравилось, больше можно узнать тут: https://example.com', {
+	const buttonMsg = await ctx.reply('Если понравилось, то можешь записаться на консультацию тут: https://example.com', {
 		reply_markup: {
 			inline_keyboard: [[
 				{ text: 'Завершить', callback_data: 'finish_course' }
@@ -199,7 +199,7 @@ bot.action('restart', async (ctx) => {
 		ctx.session.finishMessageId = null;
 	}
 
-	await ctx.reply('⬇️ Повторение - мать ученья 😃 ⬇️');
+	await ctx.reply('⬇️ Правильно! Повторение - мать ученья 😃 ⬇️');
 
 	ctx.session.step = 1;
 
@@ -207,9 +207,9 @@ bot.action('restart', async (ctx) => {
 	ctx.session.step1VideoId = videoMsg.message_id;
 
 	await new Promise(resolve => setTimeout(resolve, video1TimeOut));
-	const buttonMsg = await ctx.reply('Когда посмотришь — нажми, пожалуйста, кнопку «Далее»', {
+	const buttonMsg = await ctx.reply('Когда закончишь просмотр — взгляни, пожалуйста, на «Сообщение от Анастасии»', {
 		reply_markup: {
-			inline_keyboard: [[{ text: 'Далее', callback_data: 'step1_done' }]],
+			inline_keyboard: [[{ text: 'Сообщение от Анастасии', callback_data: 'step1_done' }]],
 		},
 	});
 	ctx.session.step1ButtonId = buttonMsg.message_id;
