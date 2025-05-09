@@ -48,7 +48,7 @@ bot.on('photo', async (ctx) => {
 
 // Настройка webhook
 app.use(bot.webhookCallback('/secret-path'));
-bot.telegram.setWebhook('https://telegram-course-bot-production.up.railway.app/secret-path');
+bot.telegram.setWebhook(`${process.env.BOT_URL}/secret-path`);
 
 app.listen(process.env.PORT || 3000, () => {
 	console.log('Бот запущен на Railway');
