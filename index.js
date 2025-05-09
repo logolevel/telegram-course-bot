@@ -26,6 +26,8 @@ bot.start(async (ctx) => {
 	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри, пожалуйста, видео' });
 	ctx.session.step1VideoId = videoMsg.message_id;
 
+	await new Promise(resolve => setTimeout(resolve, 10000));
+
 	const buttonMsg = await ctx.reply('Когда посмотришь — нажми, пожалуйста, кнопку «Далее»', {
 		reply_markup: {
 			inline_keyboard: [[{ text: 'Далее', callback_data: 'step1_done' }]],
