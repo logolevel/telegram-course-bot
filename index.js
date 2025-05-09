@@ -165,7 +165,7 @@ bot.action('finish_course', async (ctx) => {
 
 		ctx.session.step = 0; // Сброс шага
 
-		await ctx.reply('Спасибо за прохождение курса!', {
+		await ctx.reply('Спасибо, что познакомился с курсом! 🎉', {
 			reply_markup: {
 				inline_keyboard: [[
 					{ text: 'Пройти заново', callback_data: 'restart' }
@@ -182,16 +182,18 @@ bot.action('restart', async (ctx) => {
 	ctx.session.step = 1;
 
 	// Сохраняем ID видео-сообщения
-	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри видео' });
+	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри, пожалуйста, видео' });
 	ctx.session.step1VideoId = videoMsg.message_id;
 
 	// Сообщение с кнопкой "Далее"
-	const buttonMsg = await ctx.reply('Когда посмотришь — нажми кнопку «Далее»', {
+	const buttonMsg = await ctx.reply('Когда посмотришь — нажми, пожалуйста, кнопку «Далее»', {
 		reply_markup: {
 			inline_keyboard: [[{ text: 'Далее', callback_data: 'step1_done' }]],
 		},
 	});
-	ctx.session.step1ButtonId = buttonMsg.message_id;
+	setTimeout(() => {
+		ctx.session.step1ButtonId = buttonMsg.message_id;
+	}, 5000);
 });
 
 
