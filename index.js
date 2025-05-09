@@ -58,8 +58,13 @@ bot.action('step1_done', async (ctx) => {
 });
 
 bot.action('send_photo', async (ctx) => {
-	const msg = await ctx.reply('Пожалуйста, прикрепи фотографию 📷 сообщением ⬇️ 📎');
-	ctx.session.sendPhotoInstructionId = msg.message_id;
+	try {
+		const msg = await ctx.reply('Пожалуйста, прикрепи фотографию 📷 сообщением ⬇️ 📎');
+		if (!ctx.session.tempMessages) ctx.session.tempMessages = [];
+		ctx.session.tempMessages.push(msg.message_id);
+	} catch (e) {
+		console.warn('Ошибка отправки инструкции:', e.message);
+	}
 });
 
 function getUserContactInfo(user) {
@@ -91,15 +96,11 @@ bot.on('photo', async (ctx) => {
 		const { caption, reply_markup } = getUserContactInfo(ctx.from);
 
 		try {
-			await ctx.telegram.sendPhoto(adminID, photo.file_id, {
-				caption,
-				reply_markup,
-			});
-
+			await ctx.telegram.sendPhoto(adminID, photo.file_id, { caption, reply_markup });
 			if (ctx.from.username) {
 				await ctx.reply('Вы отправили это фото. Мы получили его и скоро свяжемся с вами ✉️');
 			} else {
-				await ctx.reply(`Вы отправили это фото, но у нас нет возможности написать вам первыми 😕\n\nЕсли хотите обсудить — напишите нам напрямую: ${adminUserName}`);
+				await ctx.reply(`Вы отправили это фото, но у нас нет возможности написать вам первыми 😕 Если хотите обсудить — напишите нам напрямую: ${adminUserName}`);
 			}
 		} catch (err) {
 			console.error('Ошибка отправки фото:', err);
@@ -107,13 +108,15 @@ bot.on('photo', async (ctx) => {
 			return;
 		}
 
-		if (ctx.session.sendPhotoInstructionId) {
-			try {
-				await ctx.deleteMessage(ctx.session.sendPhotoInstructionId);
-				ctx.session.sendPhotoInstructionId = null;
-			} catch (e) {
-				console.warn('Ошибка при удалении инструкции к фото:', e.message);
+		if (ctx.session.tempMessages && Array.isArray(ctx.session.tempMessages)) {
+			for (const msgId of ctx.session.tempMessages) {
+				try {
+					await ctx.deleteMessage(msgId);
+				} catch (e) {
+					console.warn('Ошибка удаления временного сообщения:', e.message);
+				}
 			}
+			ctx.session.tempMessages = [];
 		}
 
 		try {
