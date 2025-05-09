@@ -71,30 +71,44 @@ bot.action('send_photo', async (ctx) => {
 	await ctx.reply('Пожалуйста, отправь фотографию сообщением 📷');
 });
 
+function getUserContactInfo(user) {
+	const userId = user.id;
+	const username = user.username;
+
+	// Базовый caption
+	let caption = '';
+	let replyMarkup = undefined;
+
+	if (username) {
+		caption = `Фото от пользователя @${username}`;
+		replyMarkup = {
+			inline_keyboard: [[
+				{
+					text: `Открыть чат с @${username}`,
+					url: `https://t.me/${username}`,
+				}
+			]]
+		};
+	} else {
+		caption = `Фото от пользователя без username\nОткрыть чат вручную: tg://user?id=${userId}`;
+		// Без reply_markup — Telegram может заблокировать кнопку с tg://user?id
+	}
+
+	return { caption, reply_markup: replyMarkup };
+}
+
+
 // Обработка фото
 bot.on('photo', async (ctx) => {
 	if (ctx.session.step === 2) {
 		const photo = ctx.message.photo.pop();
-		const userId = ctx.from.id;
-		const username = ctx.from.username;
+
+		const { caption, reply_markup } = getUserContactInfo(ctx.from);
 
 		try {
 			await ctx.telegram.sendPhoto(adminId, photo.file_id, {
-				caption: username
-					? `Фото от пользователя @${username}`
-					: `Фото от пользователя (ID: ${userId})`,
-				reply_markup: {
-					inline_keyboard: [[
-						{
-							text: username
-								? `Открыть чат с @${username}`
-								: `Открыть чат с ID ${userId}`,
-							url: username
-								? `https://t.me/${username}`
-								: `tg://user?id=${userId}`,
-						}
-					]]
-				}
+				caption,
+				reply_markup,
 			});
 		} catch (err) {
 			console.error('Ошибка отправки фото:', err);
