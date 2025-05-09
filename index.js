@@ -199,7 +199,8 @@ bot.action('restart', async (ctx) => {
 		ctx.session.finishMessageId = null;
 	}
 
-	await ctx.reply('⬇️ Правильно! Повторение - мать ученья 😃 ⬇️');
+	await ctx.reply('Правильно! Давай ещё разок');
+	await ctx.reply('⬇️ Повторение - мать ученья 😃 ⬇️');
 
 	ctx.session.step = 1;
 
