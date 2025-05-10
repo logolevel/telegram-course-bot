@@ -218,8 +218,11 @@ bot.action('restart', async (ctx) => {
 bot.on('video', async (ctx) => {
 	const video = ctx.message.video;
 	const caption = ctx.message.caption?.trim().toLowerCase();
+	const durationSeconds = video.duration;
+	const durationMs = durationSeconds * 1000;
+
 	if (caption === 'add') {
-		await ctx.reply(`<code>${video.file_id}</code>`, {
+		await ctx.reply(`<code>${video.file_id}</code>\nДлительность: ${durationMs} мс`, {
 			parse_mode: 'HTML',
 		});
 	}
