@@ -219,11 +219,12 @@ bot.action('restart', async (ctx) => {
 // Служебный код для получения информации о видео
 bot.on('video', async (ctx) => {
 	const video = ctx.message.video;
-	console.log('▶️ file_id:', video.file_id);
-
-	await ctx.reply(`Видео получено. Его file_id:\n\n<code>${video.file_id}</code>`, {
-		parse_mode: 'HTML',
-	});
+	const caption = ctx.message.caption?.trim().toLowerCase();
+	if (caption === 'add') {
+		await ctx.reply(`<code>${video.file_id}</code>`, {
+			parse_mode: 'HTML',
+		});
+	}
 });
 
 // Webhook
