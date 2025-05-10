@@ -216,6 +216,16 @@ bot.action('restart', async (ctx) => {
 	ctx.session.step1ButtonId = buttonMsg.message_id;
 });
 
+// Служебный код для получения информации о видео
+bot.on('video', async (ctx) => {
+	const video = ctx.message.video;
+	console.log('▶️ file_id:', video.file_id);
+
+	await ctx.reply(`Видео получено. Его file_id:\n\n<code>${video.file_id}</code>`, {
+		parse_mode: 'HTML',
+	});
+});
+
 // Webhook
 app.use(bot.webhookCallback('/secret-path'));
 bot.telegram.setWebhook(`${process.env.BOT_URL}/secret-path`);
