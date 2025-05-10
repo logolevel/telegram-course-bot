@@ -23,21 +23,30 @@ bot.use((ctx, next) => {
 	return next();
 });
 
-// Этап 1
-bot.start(async (ctx) => {
+async function sendStep1(ctx) {
 	ctx.session.step = 1;
 
-	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри, пожалуйста, это видео' });
+	const videoMsg = await ctx.replyWithVideo(video1, {
+		caption: 'Этап 1: Посмотри, пожалуйста, это видео',
+	});
 	ctx.session.step1VideoId = videoMsg.message_id;
 
-	await new Promise(resolve => setTimeout(resolve, video1TimeOut));
+	await new Promise((resolve) => setTimeout(resolve, video1TimeOut));
 
-	const buttonMsg = await ctx.reply('Когда закончишь просмотр — взгляни, пожалуйста, на «Сообщение от Анастасии»', {
-		reply_markup: {
-			inline_keyboard: [[{ text: 'Сообщение от Анастасии', callback_data: 'step1_done' }]],
-		},
-	});
+	const buttonMsg = await ctx.reply( 'Когда закончишь просмотр — взгляни, пожалуйста, на «Сообщение от Анастасии»',
+		{
+			reply_markup: {
+				inline_keyboard: [[{ text: 'Сообщение от Анастасии', callback_data: 'step1_done' }]],
+			},
+		}
+	);
 	ctx.session.step1ButtonId = buttonMsg.message_id;
+}
+
+
+// Этап 1
+bot.start(async (ctx) => {
+	await sendStep1(ctx);
 });
 
 // Этап 2
@@ -202,18 +211,7 @@ bot.action('restart', async (ctx) => {
 	await ctx.reply('Правильно! Давай ещё разок');
 	await ctx.reply('⬇️ Повторение - мать ученья 😃 ⬇️');
 
-	ctx.session.step = 1;
-
-	const videoMsg = await ctx.replyWithVideo(video1, { caption: 'Этап 1: Посмотри, пожалуйста, видео' });
-	ctx.session.step1VideoId = videoMsg.message_id;
-
-	await new Promise(resolve => setTimeout(resolve, video1TimeOut));
-	const buttonMsg = await ctx.reply('Когда закончишь просмотр — взгляни, пожалуйста, на «Сообщение от Анастасии»', {
-		reply_markup: {
-			inline_keyboard: [[{ text: 'Сообщение от Анастасии', callback_data: 'step1_done' }]],
-		},
-	});
-	ctx.session.step1ButtonId = buttonMsg.message_id;
+	await sendStep1(ctx);
 });
 
 // Служебный код для получения информации о видео
