@@ -9,7 +9,7 @@ const pool = new Pool({
 
 // Инициализация таблицы
 async function init() {
-	await pool.query(`DROP TABLE IF EXISTS user_progress`);
+	// await pool.query(`DROP TABLE IF EXISTS user_progress`);
 
 	await pool.query(`
     CREATE TABLE IF NOT EXISTS user_progress (

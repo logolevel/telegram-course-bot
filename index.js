@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { Telegraf, session } = require('telegraf');
 const db = require('./db');
+const axios = require('axios');
 
 const express = require('express');
 
@@ -37,7 +38,7 @@ async function sendStep1(ctx) {
 
 	await new Promise((resolve) => setTimeout(resolve, video1TimeOut));
 
-	const buttonMsg = await ctx.reply( 'Когда закончишь просмотр — взгляни, пожалуйста, на «Сообщение от Анастасии»',
+	const buttonMsg = await ctx.reply('Когда закончишь просмотр — взгляни, пожалуйста, на «Сообщение от Анастасии»',
 		{
 			reply_markup: {
 				inline_keyboard: [[{ text: 'Сообщение от Анастасии', callback_data: 'step1_done' }]],
@@ -246,31 +247,44 @@ bot.on('video', async (ctx) => {
 });
 
 bot.command('stats', async (ctx) => {
-	if (ctx.from.id.toString() !== adminID) return;
+	const adminId = ctx.from.id.toString();
+	if (adminId !== adminID) {
+		return ctx.reply('⛔️ Доступ запрещён');
+	}
 
-	const row = getStats();
+	const stats = await db.getStats();
 
-	const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify({
+	const step1 = parseInt(stats.step1 || 0);
+	const step2 = parseInt(stats.step2 || 0);
+	const step3 = parseInt(stats.step3 || 0);
+	const sentPhotos = parseInt(stats.sent_photos || 0);
+
+	const text = `📊 <b>Аналитика прохождения курса:</b>\n\n` +
+		`👥 Этап 1: <b>${step1}</b>\n` +
+		`🎞 Этап 2: <b>${step2}</b>\n` +
+		`📷 Фото отправили: <b>${sentPhotos}</b>\n` +
+		`🎬 Этап 3: <b>${step3}</b>`;
+
+	// Генерация URL графика через QuickChart
+	const chartConfig = {
 		type: 'bar',
 		data: {
 			labels: ['Этап 1', 'Этап 2', 'Фото', 'Этап 3'],
 			datasets: [{
-				label: 'Прошли этап',
-				data: [row.step1, row.step2, row.photo, row.step3],
-				backgroundColor: ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2'],
+				label: 'Количество',
+				data: [step1, step2, sentPhotos, step3],
+				backgroundColor: ['#4e79a7', '#f28e2c', '#e15759', '#76b7b2']
 			}]
-		},
-		options: {
-			title: {
-				display: true,
-				text: `Аналитика пользователей (всего: ${row.total})`
-			},
-			legend: { display: false }
 		}
-	}))}`;
+	};
 
-	await ctx.replyWithPhoto({ url: chartUrl }, { caption: '📊 Статистика прохождения этапов' });
+	const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}`;
+
+	// Отправка текста и графика
+	await ctx.replyWithPhoto({ url: chartUrl }, { caption: '📈 График прохождения этапов' });
+	await ctx.reply(text, { parse_mode: 'HTML' });
 });
+
 
 
 // Webhook
