@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { Telegraf, session } = require('telegraf');
+const { upsertUser, updateProgress, getStats } = require('./db');
 const express = require('express');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -47,6 +48,8 @@ async function sendStep1(ctx) {
 // Этап 1
 bot.start(async (ctx) => {
 	await sendStep1(ctx);
+	upsertUser(ctx.from);
+	updateProgress(ctx.from.id, 'step1_completed');
 });
 
 // Этап 2
@@ -59,6 +62,7 @@ bot.action('step1_done', async (ctx) => {
 	}
 
 	ctx.session.step = 2;
+	updateProgress(ctx.from.id, 'step2_completed');
 
 	const videoMsg = await ctx.replyWithVideo(video2, {
 		caption: 'Этап 2: Это видео с Настей',
@@ -145,6 +149,8 @@ bot.on('photo', async (ctx) => {
 
 		ctx.session.step = 3;
 
+		updateProgress(ctx.from.id, 'photo_sent');
+
 		// Кнопка для показа видео 3 этапа
 		const buttonMsg = await ctx.reply('Финальный шаг! Нажми, пожалуйста, чтобы посмотреть видео заключающего этапа 🎬', {
 			reply_markup: {
@@ -169,6 +175,8 @@ bot.action('show_final_video', async (ctx) => {
 		caption: 'Этап 3: Финальное видео',
 	});
 	ctx.session.step3VideoId = videoMsg.message_id;
+
+	updateProgress(ctx.from.id, 'step3_completed');
 
 	await new Promise(resolve => setTimeout(resolve, video3TimeOut));
 
@@ -227,6 +235,34 @@ bot.on('video', async (ctx) => {
 		});
 	}
 });
+
+bot.command('stats', async (ctx) => {
+	if (ctx.from.id.toString() !== adminID) return;
+
+	const row = getStats();
+
+	const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify({
+		type: 'bar',
+		data: {
+			labels: ['Этап 1', 'Этап 2', 'Фото', 'Этап 3'],
+			datasets: [{
+				label: 'Прошли этап',
+				data: [row.step1, row.step2, row.photo, row.step3],
+				backgroundColor: ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2'],
+			}]
+		},
+		options: {
+			title: {
+				display: true,
+				text: `Аналитика пользователей (всего: ${row.total})`
+			},
+			legend: { display: false }
+		}
+	}))}`;
+
+	await ctx.replyWithPhoto({ url: chartUrl }, { caption: '📊 Статистика прохождения этапов' });
+});
+
 
 // Webhook
 app.use(bot.webhookCallback('/secret-path'));
