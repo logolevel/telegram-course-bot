@@ -252,38 +252,52 @@ bot.command('stats', async (ctx) => {
 		return ctx.reply('⛔️ Доступ запрещён');
 	}
 
-	const stats = await db.getStats();
+	const args = ctx.message.text.split(' ');
+	const monthArg = args[1]; // может быть '2025-05' или undefined
+	let periodLabel = 'за всё время';
+
+	let stats;
+	try {
+		stats = await db.getStats(monthArg);
+		if (monthArg) {
+			const [year, month] = monthArg.split('-');
+			periodLabel = `за ${month}.${year}`;
+		}
+	} catch (err) {
+		return ctx.reply('❌ Неверный формат даты. Используй: /stats YYYY-MM');
+	}
 
 	const step1 = parseInt(stats.step1 || 0);
 	const step2 = parseInt(stats.step2 || 0);
 	const step3 = parseInt(stats.step3 || 0);
 	const sentPhotos = parseInt(stats.sent_photos || 0);
+	const total = parseInt(stats.total || 0);
 
-	const text = `📊 <b>Аналитика прохождения курса:</b>\n\n` +
-		`👥 Этап 1: <b>${step1}</b>\n` +
+	const text = `📊 <b>Аналитика ${periodLabel}:</b>\n\n` +
+		`👥 Всего пользователей: <b>${total}</b>\n\n` +
+		`🎬 Этап 1: <b>${step1}</b>\n` +
 		`🎞 Этап 2: <b>${step2}</b>\n` +
 		`📷 Фото отправили: <b>${sentPhotos}</b>\n` +
-		`🎬 Этап 3: <b>${step3}</b>`;
+		`🎯 Этап 3: <b>${step3}</b>`;
 
-	// Генерация URL графика через QuickChart
 	const chartConfig = {
 		type: 'bar',
 		data: {
-			labels: ['Этап 1', 'Этап 2', 'Фото', 'Этап 3'],
+			labels: ['Этап 1', 'Этап 2', 'Фото', 'Этап 3', 'Всего'],
 			datasets: [{
 				label: 'Количество',
-				data: [step1, step2, sentPhotos, step3],
-				backgroundColor: ['#4e79a7', '#f28e2c', '#e15759', '#76b7b2']
+				data: [step1, step2, sentPhotos, step3, total],
+				backgroundColor: ['#4e79a7', '#f28e2c', '#e15759', '#76b7b2', '#59a14f']
 			}]
 		}
 	};
 
 	const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}`;
 
-	// Отправка текста и графика
-	await ctx.replyWithPhoto({ url: chartUrl }, { caption: '📈 График прохождения этапов' });
+	await ctx.replyWithPhoto({ url: chartUrl }, { caption: `📈 График за ${periodLabel}` });
 	await ctx.reply(text, { parse_mode: 'HTML' });
 });
+
 
 
 
