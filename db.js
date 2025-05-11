@@ -7,7 +7,7 @@ const pool = new Pool({
 
 // Инициализация таблицы
 async function init() {
-	await pool.query(`DROP TABLE IF EXISTS user_progress`);
+	// await pool.query(`DROP TABLE IF EXISTS user_progress`);
 
 	await pool.query(`
     CREATE TABLE IF NOT EXISTS user_progress (
@@ -25,14 +25,13 @@ async function init() {
 // Создание или обновление пользователя (включает подсчёт рестартов)
 async function upsertUser(userId, username) {
 	await pool.query(`
-    INSERT INTO user_progress (user_id, username, restart_count)
-    VALUES ($1, $2, 0)
+    INSERT INTO user_progress (user_id, username)
+    VALUES ($1, $2)
     ON CONFLICT (user_id) DO UPDATE
-    SET 
-      username = EXCLUDED.username,
-      restart_count = user_progress.restart_count + 1;
+    SET username = EXCLUDED.username;
   `, [userId, username]);
 }
+
 
 // Обновление шага пользователя
 async function updateStep(userId, step) {
@@ -50,6 +49,15 @@ async function markPhotoSent(userId) {
     SET sent_photo = TRUE, updated_at = NOW()
     WHERE user_id = $1;
   `, [userId]);
+}
+
+// Увеличение счётчика рестартов
+async function incrementRestartCount(userId) {
+	await pool.query(`
+		UPDATE user_progress
+		SET restart_count = COALESCE(restart_count, 0) + 1
+		WHERE user_id = $1;
+	`, [userId]);
 }
 
 // Получить аналитику
@@ -83,5 +91,6 @@ module.exports = {
 	upsertUser,
 	updateStep,
 	markPhotoSent,
+	incrementRestartCount,
 	getStats
 };
