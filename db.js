@@ -1,54 +1,70 @@
-const Database = require('better-sqlite3');
-const db = new Database('bot.db');
+const { Pool } = require('pg');
 
-// Создание таблицы, если нет
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS user_progress (
-    user_id INTEGER PRIMARY KEY,
-    username TEXT,
-    step1_completed INTEGER DEFAULT 0,
-    step2_completed INTEGER DEFAULT 0,
-    photo_sent INTEGER DEFAULT 0,
-    step3_completed INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-  )
-`).run();
+const pool = new Pool({
+	connectionString: process.env.DATABASE_URL,
+	ssl: {
+		rejectUnauthorized: false
+	}
+});
 
-function upsertUser(user) {
-	db.prepare(`
-		INSERT INTO user_progress (user_id, username)
-		VALUES (?, ?)
-		ON CONFLICT(user_id) DO UPDATE SET username = excluded.username
-	`).run(user.id, user.username || null);
+async function init() {
+	await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_progress (
+      user_id BIGINT PRIMARY KEY,
+      username TEXT,
+      step INTEGER DEFAULT 0,
+      sent_photo BOOLEAN DEFAULT FALSE
+    );
+  `);
 }
 
-function updateProgress(userId, field) {
-	const allowedFields = ['step1_completed', 'step2_completed', 'photo_sent', 'step3_completed'];
-	if (!allowedFields.includes(field)) throw new Error('Недопустимое поле обновления');
-
-	db.prepare(`
-		UPDATE user_progress
-		SET ${field} = 1,
-		    updated_at = CURRENT_TIMESTAMP
-		WHERE user_id = ?
-	`).run(userId);
+async function upsertUser(user_id, username) {
+	await pool.query(`
+    INSERT INTO user_progress (user_id, username)
+    VALUES ($1, $2)
+    ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username;
+  `, [user_id, username]);
 }
 
-function getStats() {
-	return db.prepare(`
-		SELECT
-			COUNT(*) AS total,
-			SUM(step1_completed) AS step1,
-			SUM(step2_completed) AS step2,
-			SUM(photo_sent) AS photo,
-			SUM(step3_completed) AS step3
-		FROM user_progress
-	`).get();
+async function updateProgress(user_id, step = null, sent_photo = null) {
+	const updates = [];
+	const values = [user_id];
+
+	if (step !== null) {
+		values.push(step);
+		updates.push(`step = $${values.length}`);
+	}
+	if (sent_photo !== null) {
+		values.push(sent_photo);
+		updates.push(`sent_photo = $${values.length}`);
+	}
+
+	if (updates.length > 0) {
+		await pool.query(
+			`UPDATE user_progress SET ${updates.join(', ')} WHERE user_id = $1`,
+			values
+		);
+	}
+}
+
+async function getStats() {
+	const total = await pool.query(`SELECT COUNT(*) FROM user_progress`);
+	const step1 = await pool.query(`SELECT COUNT(*) FROM user_progress WHERE step >= 1`);
+	const step2 = await pool.query(`SELECT COUNT(*) FROM user_progress WHERE step >= 2`);
+	const step3 = await pool.query(`SELECT COUNT(*) FROM user_progress WHERE step >= 3`);
+	const photos = await pool.query(`SELECT COUNT(*) FROM user_progress WHERE sent_photo = true`);
+
+	return {
+		total: Number(total.rows[0].count),
+		step1: Number(step1.rows[0].count),
+		step2: Number(step2.rows[0].count),
+		step3: Number(step3.rows[0].count),
+		photos: Number(photos.rows[0].count),
+	};
 }
 
 module.exports = {
-	db,
+	init,
 	upsertUser,
 	updateProgress,
 	getStats,

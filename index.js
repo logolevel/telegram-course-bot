@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { Telegraf, session } = require('telegraf');
-const { upsertUser, updateProgress, getStats } = require('./db');
+const db = require('./db');
+
 const express = require('express');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -16,6 +17,8 @@ const video3TimeOut = 33000;
 
 const adminID = '373532023';
 const adminUserName = '@dzaviriukha';
+
+db.init().catch(console.error);
 
 bot.use(session());
 
@@ -48,8 +51,8 @@ async function sendStep1(ctx) {
 // Этап 1
 bot.start(async (ctx) => {
 	await sendStep1(ctx);
-	upsertUser(ctx.from);
-	updateProgress(ctx.from.id, 'step1_completed');
+	await db.upsertUser(ctx.from.id, ctx.from.username);
+	await db.updateProgress(ctx.from.id, 'step1_completed');
 });
 
 // Этап 2
@@ -62,7 +65,7 @@ bot.action('step1_done', async (ctx) => {
 	}
 
 	ctx.session.step = 2;
-	updateProgress(ctx.from.id, 'step2_completed');
+	await db.updateProgress(ctx.from.id, 'step2_completed');
 
 	const videoMsg = await ctx.replyWithVideo(video2, {
 		caption: 'Этап 2: Это видео с Настей',
@@ -149,7 +152,7 @@ bot.on('photo', async (ctx) => {
 
 		ctx.session.step = 3;
 
-		updateProgress(ctx.from.id, 'photo_sent');
+		await db.updateProgress(ctx.from.id, 'photo_sent');
 
 		// Кнопка для показа видео 3 этапа
 		const buttonMsg = await ctx.reply('Финальный шаг! Нажми, пожалуйста, чтобы посмотреть видео заключающего этапа 🎬', {
@@ -176,7 +179,7 @@ bot.action('show_final_video', async (ctx) => {
 	});
 	ctx.session.step3VideoId = videoMsg.message_id;
 
-	updateProgress(ctx.from.id, 'step3_completed');
+	await db.updateProgress(ctx.from.id, 'step3_completed');
 
 	await new Promise(resolve => setTimeout(resolve, video3TimeOut));
 
