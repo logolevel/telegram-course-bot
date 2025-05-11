@@ -2,70 +2,67 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
 	connectionString: process.env.DATABASE_URL,
-	ssl: {
-		rejectUnauthorized: false
-	}
+	ssl: { rejectUnauthorized: false },
 });
 
+// Инициализация таблицы
 async function init() {
 	await pool.query(`
     CREATE TABLE IF NOT EXISTS user_progress (
       user_id BIGINT PRIMARY KEY,
       username TEXT,
-      step INTEGER DEFAULT 0,
-      sent_photo BOOLEAN DEFAULT FALSE
+      step INTEGER DEFAULT 1,
+      sent_photo BOOLEAN DEFAULT FALSE,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
+	console.log('✅ PostgreSQL: таблица user_progress готова');
 }
 
-async function upsertUser(user_id, username) {
+// Создание или обновление пользователя
+async function upsertUser(userId, username) {
 	await pool.query(`
     INSERT INTO user_progress (user_id, username)
     VALUES ($1, $2)
     ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username;
-  `, [user_id, username]);
+  `, [userId, username]);
 }
 
-async function updateProgress(user_id, step = null, sent_photo = null) {
-	const updates = [];
-	const values = [user_id];
-
-	if (step !== null) {
-		values.push(step);
-		updates.push(`step = $${values.length}`);
-	}
-	if (sent_photo !== null) {
-		values.push(sent_photo);
-		updates.push(`sent_photo = $${values.length}`);
-	}
-
-	if (updates.length > 0) {
-		await pool.query(
-			`UPDATE user_progress SET ${updates.join(', ')} WHERE user_id = $1`,
-			values
-		);
-	}
+// Обновление шага пользователя
+async function updateStep(userId, step) {
+	await pool.query(`
+    UPDATE user_progress
+    SET step = $1, updated_at = NOW()
+    WHERE user_id = $2;
+  `, [step, userId]);
 }
 
+// Отметить, что пользователь отправил фото
+async function markPhotoSent(userId) {
+	await pool.query(`
+    UPDATE user_progress
+    SET sent_photo = TRUE, updated_at = NOW()
+    WHERE user_id = $1;
+  `, [userId]);
+}
+
+// Получить аналитику
 async function getStats() {
-	const total = await pool.query(`SELECT COUNT(*) FROM user_progress`);
-	const step1 = await pool.query(`SELECT COUNT(*) FROM user_progress WHERE step >= 1`);
-	const step2 = await pool.query(`SELECT COUNT(*) FROM user_progress WHERE step >= 2`);
-	const step3 = await pool.query(`SELECT COUNT(*) FROM user_progress WHERE step >= 3`);
-	const photos = await pool.query(`SELECT COUNT(*) FROM user_progress WHERE sent_photo = true`);
-
-	return {
-		total: Number(total.rows[0].count),
-		step1: Number(step1.rows[0].count),
-		step2: Number(step2.rows[0].count),
-		step3: Number(step3.rows[0].count),
-		photos: Number(photos.rows[0].count),
-	};
+	const result = await pool.query(`
+    SELECT
+      COUNT(*) FILTER (WHERE step >= 1) AS step1,
+      COUNT(*) FILTER (WHERE step >= 2) AS step2,
+      COUNT(*) FILTER (WHERE step >= 3) AS step3,
+      COUNT(*) FILTER (WHERE sent_photo = TRUE) AS sent_photos
+    FROM user_progress;
+  `);
+	return result.rows[0];
 }
 
 module.exports = {
 	init,
 	upsertUser,
-	updateProgress,
-	getStats,
+	updateStep,
+	markPhotoSent,
+	getStats
 };

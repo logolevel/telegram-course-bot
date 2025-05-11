@@ -51,8 +51,10 @@ async function sendStep1(ctx) {
 // Этап 1
 bot.start(async (ctx) => {
 	await sendStep1(ctx);
+
+	// Update db
 	await db.upsertUser(ctx.from.id, ctx.from.username);
-	await db.updateProgress(ctx.from.id, 'step1_completed');
+	await db.updateStep(ctx.from.id, 1);
 });
 
 // Этап 2
@@ -65,7 +67,9 @@ bot.action('step1_done', async (ctx) => {
 	}
 
 	ctx.session.step = 2;
-	await db.updateProgress(ctx.from.id, 'step2_completed');
+
+	// Update db
+	await db.updateStep(ctx.from.id, 2);
 
 	const videoMsg = await ctx.replyWithVideo(video2, {
 		caption: 'Этап 2: Это видео с Настей',
@@ -152,7 +156,8 @@ bot.on('photo', async (ctx) => {
 
 		ctx.session.step = 3;
 
-		await db.updateProgress(ctx.from.id, 'photo_sent');
+		// Update db
+		await db.markPhotoSent(ctx.from.id);
 
 		// Кнопка для показа видео 3 этапа
 		const buttonMsg = await ctx.reply('Финальный шаг! Нажми, пожалуйста, чтобы посмотреть видео заключающего этапа 🎬', {
@@ -179,7 +184,8 @@ bot.action('show_final_video', async (ctx) => {
 	});
 	ctx.session.step3VideoId = videoMsg.message_id;
 
-	await db.updateProgress(ctx.from.id, 'step3_completed');
+	// Update db
+	await db.updateStep(ctx.from.id, 3);
 
 	await new Promise(resolve => setTimeout(resolve, video3TimeOut));
 
