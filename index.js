@@ -272,9 +272,11 @@ bot.command('stats', async (ctx) => {
 	const step3 = parseInt(stats.step3 || 0);
 	const sentPhotos = parseInt(stats.sent_photos || 0);
 	const total = parseInt(stats.total || 0);
+	const restarts = parseInt(stats.total_restarts || 0);
 
 	const text = `📊 <b>Аналитика ${periodLabel}:</b>\n\n` +
-		`👥 Всего пользователей: <b>${total}</b>\n\n` +
+		`👥 Всего пользователей: <b>${total}</b>\n` +
+		`🔁 Повторных стартов: <b>${restarts}</b>\n\n` +
 		`🎬 Этап 1: <b>${step1}</b>\n` +
 		`🎞 Этап 2: <b>${step2}</b>\n` +
 		`📷 Фото отправили: <b>${sentPhotos}</b>\n` +
@@ -283,23 +285,29 @@ bot.command('stats', async (ctx) => {
 	const chartConfig = {
 		type: 'bar',
 		data: {
-			labels: ['Этап 1', 'Этап 2', 'Фото', 'Этап 3', 'Всего'],
+			labels: ['Этап 1', 'Этап 2', 'Фото', 'Этап 3'],
 			datasets: [{
-				label: 'Количество',
-				data: [step1, step2, sentPhotos, step3, total],
-				backgroundColor: ['#4e79a7', '#f28e2c', '#e15759', '#76b7b2', '#59a14f']
+				label: `Количество (${periodLabel})`,
+				data: [step1, step2, sentPhotos, step3],
+				backgroundColor: ['#4e79a7', '#f28e2c', '#e15759', '#76b7b2']
 			}]
+		},
+		options: {
+			plugins: {
+				title: {
+					display: true,
+					text: `👥 Всего пользователей: ${total}`,
+					font: { size: 18 }
+				}
+			}
 		}
 	};
 
 	const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}`;
 
-	await ctx.replyWithPhoto({ url: chartUrl }, { caption: `📈 График за ${periodLabel}` });
+	await ctx.replyWithPhoto({ url: chartUrl }, { caption: `📈 График ${periodLabel}` });
 	await ctx.reply(text, { parse_mode: 'HTML' });
 });
-
-
-
 
 // Webhook
 app.use(bot.webhookCallback('/secret-path'));

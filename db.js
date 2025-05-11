@@ -5,11 +5,9 @@ const pool = new Pool({
 	ssl: { rejectUnauthorized: false },
 });
 
-
-
 // Инициализация таблицы
 async function init() {
-	// await pool.query(`DROP TABLE IF EXISTS user_progress`);
+	await pool.query(`DROP TABLE IF EXISTS user_progress`);
 
 	await pool.query(`
     CREATE TABLE IF NOT EXISTS user_progress (
@@ -17,18 +15,22 @@ async function init() {
       username TEXT,
       step INTEGER DEFAULT 1,
       sent_photo BOOLEAN DEFAULT FALSE,
+      restart_count INTEGER DEFAULT 0,
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
 	console.log('✅ PostgreSQL: таблица user_progress готова');
 }
 
-// Создание или обновление пользователя
+// Создание или обновление пользователя (включает подсчёт рестартов)
 async function upsertUser(userId, username) {
 	await pool.query(`
-    INSERT INTO user_progress (user_id, username)
-    VALUES ($1, $2)
-    ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username;
+    INSERT INTO user_progress (user_id, username, restart_count)
+    VALUES ($1, $2, 0)
+    ON CONFLICT (user_id) DO UPDATE
+    SET 
+      username = EXCLUDED.username,
+      restart_count = user_progress.restart_count + 1;
   `, [userId, username]);
 }
 
@@ -67,15 +69,14 @@ async function getStats(month = null) {
       COUNT(*) FILTER (WHERE step >= 2) AS step2,
       COUNT(*) FILTER (WHERE step >= 3) AS step3,
       COUNT(*) FILTER (WHERE sent_photo = TRUE) AS sent_photos,
-      COUNT(*) AS total
+      COUNT(*) AS total,
+      SUM(restart_count) AS total_restarts
     FROM user_progress
     ${whereClause};
   `, values);
 
 	return result.rows[0];
 }
-
-
 
 module.exports = {
 	init,
