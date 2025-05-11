@@ -1,17 +1,17 @@
 const { Pool } = require('pg');
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+	connectionString: process.env.DATABASE_URL,
+	ssl: { rejectUnauthorized: false },
 });
 
 
 
 // Инициализация таблицы
 async function init() {
-  // await pool.query(`DROP TABLE IF EXISTS user_progress`);
+	// await pool.query(`DROP TABLE IF EXISTS user_progress`);
 
-  await pool.query(`
+	await pool.query(`
     CREATE TABLE IF NOT EXISTS user_progress (
       user_id BIGINT PRIMARY KEY,
       username TEXT,
@@ -20,12 +20,12 @@ async function init() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
-  console.log('✅ PostgreSQL: таблица user_progress готова');
+	console.log('✅ PostgreSQL: таблица user_progress готова');
 }
 
 // Создание или обновление пользователя
 async function upsertUser(userId, username) {
-  await pool.query(`
+	await pool.query(`
     INSERT INTO user_progress (user_id, username)
     VALUES ($1, $2)
     ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username;
@@ -34,7 +34,7 @@ async function upsertUser(userId, username) {
 
 // Обновление шага пользователя
 async function updateStep(userId, step) {
-  await pool.query(`
+	await pool.query(`
     UPDATE user_progress
     SET step = $1, updated_at = NOW()
     WHERE user_id = $2;
@@ -43,7 +43,7 @@ async function updateStep(userId, step) {
 
 // Отметить, что пользователь отправил фото
 async function markPhotoSent(userId) {
-  await pool.query(`
+	await pool.query(`
     UPDATE user_progress
     SET sent_photo = TRUE, updated_at = NOW()
     WHERE user_id = $1;
@@ -52,15 +52,16 @@ async function markPhotoSent(userId) {
 
 // Получить аналитику
 async function getStats(month = null) {
-  let whereClause = '';
-  let values = [];
+	let whereClause = '';
+	let values = [];
 
-  if (month) {
-    whereClause = `WHERE DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', $1::DATE)`;
-    values = [month];
-  }
+	if (month) {
+		const formattedDate = `${month}-01`;
+		whereClause = `WHERE DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', $1::DATE)`;
+		values = [formattedDate];
+	}
 
-  const result = await pool.query(`
+	const result = await pool.query(`
     SELECT
       COUNT(*) FILTER (WHERE step >= 1) AS step1,
       COUNT(*) FILTER (WHERE step >= 2) AS step2,
@@ -71,14 +72,15 @@ async function getStats(month = null) {
     ${whereClause};
   `, values);
 
-  return result.rows[0];
+	return result.rows[0];
 }
 
 
+
 module.exports = {
-  init,
-  upsertUser,
-  updateStep,
-  markPhotoSent,
-  getStats
+	init,
+	upsertUser,
+	updateStep,
+	markPhotoSent,
+	getStats
 };
