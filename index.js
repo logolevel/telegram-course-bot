@@ -221,8 +221,8 @@ bot.action('finish_course', async (ctx) => {
 bot.action('restart', async (ctx) => {
 	await ctx.answerCbQuery();
 
-	//Update db
-	await db.incrementRestartCount(userId);
+	// Update db
+	await db.incrementRestartCount(ctx.from.id);
 
 	if (ctx.session.finishMessageId) {
 		await ctx.deleteMessage(ctx.session.finishMessageId).catch((e) => console.warn('Не удалось удалить финальное сообщение:', e.message));
