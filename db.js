@@ -37,7 +37,7 @@ async function upsertUser(userId, username) {
 async function updateStep(userId, step) {
 	await pool.query(`
     UPDATE user_progress
-    SET step = $1, updated_at = NOW()
+    SET step = GREATEST(step, $1), updated_at = NOW()
     WHERE user_id = $2;
   `, [step, userId]);
 }
@@ -55,7 +55,7 @@ async function markPhotoSent(userId) {
 async function incrementRestartCount(userId) {
 	await pool.query(`
 		UPDATE user_progress
-		SET restart_count = COALESCE(restart_count, 0) + 1
+		SET restart_count = restart_count + 1, updated_at = NOW()
 		WHERE user_id = $1;
 	`, [userId]);
 }
