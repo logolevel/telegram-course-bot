@@ -417,12 +417,9 @@ bot.on("document", async (ctx) => {
 
   // Отправляем file_id
   if (sentMsg.video_note) {
-    await ctx.reply(
-      `✅ file_id видео-кружка: \`${sentMsg.video_note.file_id}\``,
-      {
-        parse_mode: "Markdown",
-      }
-    );
+    await ctx.reply(`✅ file_id видео-кружка: ${sentMsg.video_note.file_id}`);
+	await ctx.reply(`Длительность: ${sentMsg.video_note.duration} секунд`);
+
   } else {
     await ctx.reply("⚠️ Что-то пошло не так, видео-кружок не получен.");
   }
