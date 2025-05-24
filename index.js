@@ -18,7 +18,7 @@ const video3 =
   "BAACAgIAAxkBAAMFaBzZkbsXNKEyOy_-d7-nknnitaYAApeDAAJuhuhIRwGRAAFJfFTKNgQ";
 
 const video1TimeOut = 10000;
-const video2TimeOut = 26000;
+const video2TimeOut = 16000;
 const video3TimeOut = 33000;
 
 const adminID = "373532023";
