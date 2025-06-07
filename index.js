@@ -3,6 +3,8 @@ const { Telegraf, Markup } = require("telegraf");
 const db = require("./db");
 const express = require("express");
 const path = require('path');
+const fs = require('fs');
+const axios = require("axios");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
