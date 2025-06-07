@@ -12,11 +12,12 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Константы из вашего примера
-const video1 = "BAACAgIAAxkBAAMDaBzV1qo0HMIY0_kM48OIZ1bRZeEAAiKCAAJuhuhIzHUqNWbJSW42BA";
-const video2 = "DQACAgIAAxkDAAIC8Wgxf-gTYL9ppDtvCSS4fLJ8QUElAALYcAACPzeRSa_U96Dp53hANgQ";
-const video1TimeOut = 10000; // 10 секунд
-const video2TimeOut = 16000; // 16 секунд
-const adminID = process.env.ADMIN_ID;
+const video1 = "BAACAgIAAxkBAAIDJWhEcOGXY7u6d9TsmvHCEkQDD357AAKZcQAC6nYhSlYP-N1iRopuNgQ";
+const video2 = "BAACAgIAAxkBAAIDJ2hEcVRicHP0WT2hON2Qq5Q-b3I7AAKdcQAC6nYhStikhv60X81eNgQ";
+// const video1TimeOut = 988000; // 16 минут 27 секунд
+const video1TimeOut = 20000; // тест 20 секунд
+const video2TimeOut = 40000; // 40 секунд
+
 const adminUserName = process.env.ADMIN_USERNAME;
 
 // Читаем ID админов из .env. Может быть один или несколько через запятую.
