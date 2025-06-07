@@ -23,7 +23,7 @@ async function init() {
     );
   `;
   try {
-	await pool.query(`DROP TABLE IF EXISTS user_progress`);
+	await pool.query(`DROP TABLE IF EXISTS users`);
     await pool.query(query);
     console.log('Database initialized, users table is ready.');
   } catch (err) {
