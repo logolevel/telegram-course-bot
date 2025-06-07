@@ -1,116 +1,132 @@
-const { Pool } = require("pg");
+// await pool.query(`DROP TABLE IF EXISTS user_progress`);
 
-// Инициализация пула подключений к вашей базе данных на Railway
+const { Pool } = require('pg');
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
 /**
- * @description Инициализирует базу данных, создавая таблицу для отслеживания прогресса пользователей, если она еще не создана.
+ * @description Инициализирует БД, создавая таблицу `users` с колонками для каждого этапа.
+ * user_id становится первичным ключом, что гарантирует уникальность.
  */
 async function init() {
   const query = `
-    CREATE TABLE IF NOT EXISTS user_progress (
-      id SERIAL PRIMARY KEY,
-      user_id BIGINT NOT NULL,
+    CREATE TABLE IF NOT EXISTS users (
+      user_id BIGINT PRIMARY KEY,
       username VARCHAR(255),
-      stage VARCHAR(50) NOT NULL,
-      created_at TIMESTAMPTZ DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW(), -- Дата первого контакта с ботом
+      pressed_start_at TIMESTAMPTZ,         -- Дата нажатия на /start
+      pressed_go_at TIMESTAMPTZ,             -- Дата нажатия на "Поехали!"
+      uploaded_photo_at TIMESTAMPTZ          -- Дата загрузки фото
     );
   `;
   try {
-    // await pool.query(`DROP TABLE IF EXISTS user_progress`);
+	await pool.query(`DROP TABLE IF EXISTS user_progress`);
     await pool.query(query);
-    console.log("Database initialized, user_progress table is ready.");
+    console.log('Database initialized, users table is ready.');
   } catch (err) {
-    console.error("Error initializing database:", err);
+    console.error('Error initializing database:', err);
     throw err;
   }
 }
 
 /**
- * @description Записывает этап, который прошел пользователь, в базу данных.
+ * @description Отслеживает действие пользователя.
+ * Если пользователь новый - создает запись. Если уже существует - обновляет поле соответствующего этапа.
+ * Использует конструкцию INSERT ... ON CONFLICT (user_id) DO UPDATE.
  * @param {number} userId - ID пользователя Telegram.
- * @param {string} username - Username пользователя в Telegram.
- * @param {string} stage - Название этапа (например, 'pressed_start').
+ * @param {string} username - Username пользователя.
+ * @param {string} stageColumn - Название колонки для обновления (например, 'pressed_go_at').
  */
-async function logProgress(userId, username, stage) {
+async function trackUserAction(userId, username, stageColumn) {
+  // `stageColumn` должен быть в "белом списке", чтобы избежать SQL-инъекций.
+  const allowedColumns = ['pressed_start_at', 'pressed_go_at', 'uploaded_photo_at'];
+  if (!allowedColumns.includes(stageColumn)) {
+      console.error(`Invalid stage column: ${stageColumn}`);
+      return;
+  }
+
   const query = `
-    INSERT INTO user_progress (user_id, username, stage)
-    VALUES ($1, $2, $3);
+    INSERT INTO users (user_id, username, ${stageColumn})
+    VALUES ($1, $2, NOW())
+    ON CONFLICT (user_id) DO UPDATE SET
+      ${stageColumn} = NOW(),
+      username = EXCLUDED.username; -- Обновляем username, если он изменился
   `;
+
   try {
-    await pool.query(query, [userId, username, stage]);
-    console.log(`Logged progress for user ${userId}: ${stage}`);
+    await pool.query(query, [userId, username]);
+    console.log(`Tracked action '${stageColumn}' for user ${userId}`);
   } catch (err) {
-    console.error(`Error logging progress for user ${userId}:`, err);
+    console.error(`Error tracking action for user ${userId}:`, err);
   }
 }
 
 /**
- * @description Получает общее количество уникальных пользователей, которые взаимодействовали с ботом.
+ * @description Получает общее количество пользователей.
  * @returns {Promise<string>} Количество пользователей.
  */
 async function getTotalUsers() {
-  const query = `SELECT COUNT(DISTINCT user_id) FROM user_progress;`;
-  try {
-    const res = await pool.query(query);
-    return res.rows[0].count;
-  } catch (err) {
-    console.error("Error getting total users:", err);
-    return "0";
-  }
+    const query = `SELECT COUNT(user_id) FROM users;`;
+    try {
+        const res = await pool.query(query);
+        return res.rows[0].count;
+    } catch (err) {
+        console.error('Error getting total users:', err);
+        return "0";
+    }
 }
 
 /**
- * @description Получает статистику по этапам воронки.
+ * @description Получает статистику по этапам воронки, считая не-пустые ячейки.
  * @param {number|null} month - Номер месяца для фильтрации (1-12).
  * @param {number|null} year - Год для фильтрации.
- * @returns {Promise<Array<{stage: string, count: number}>>} Массив объектов с названием этапа и количеством пользователей.
+ * @returns {Promise<Array<{stage: string, count: number}>>}
  */
 async function getStageStats(month, year) {
-  const stagesOrder = [
-    "entered_bot",
-    "pressed_start",
-    "pressed_go",
-    "uploaded_photo",
-  ];
-  let query;
-  const params = [];
+    let query = `
+        SELECT
+          COUNT(created_at) AS entered_bot,
+          COUNT(pressed_start_at) AS pressed_start,
+          COUNT(pressed_go_at) AS pressed_go,
+          COUNT(uploaded_photo_at) AS uploaded_photo
+        FROM users
+    `;
+    const params = [];
 
-  if (month && year) {
-    query = `SELECT stage, COUNT(DISTINCT user_id) as count
-                 FROM user_progress
-                 WHERE EXTRACT(MONTH FROM created_at) = $1 AND EXTRACT(YEAR FROM created_at) = $2
-                 GROUP BY stage;`;
-    params.push(month, year);
-  } else {
-    query = `SELECT stage, COUNT(DISTINCT user_id) as count
-                 FROM user_progress
-                 GROUP BY stage;`;
-  }
+    // Добавляем фильтр по дате, если он указан.
+    // Фильтруем по дате создания записи (первого контакта с ботом).
+    if (month && year) {
+        query += ` WHERE EXTRACT(MONTH FROM created_at) = $1 AND EXTRACT(YEAR FROM created_at) = $2`;
+        params.push(month, year);
+    }
 
-  try {
-    const res = await pool.query(query, params);
-    const resultsMap = new Map(
-      res.rows.map((row) => [row.stage, parseInt(row.count, 10)])
-    );
-    // Гарантируем, что все этапы будут в итоговом результате в правильном порядке
-    const finalStats = stagesOrder.map((stage) => ({
-      stage,
-      count: resultsMap.get(stage) || 0,
-    }));
-    return finalStats;
-  } catch (err) {
-    console.error("Error getting stage stats:", err);
-    return stagesOrder.map((stage) => ({ stage, count: 0 }));
-  }
+    try {
+        const res = await pool.query(query, params);
+        const counts = res.rows[0];
+
+        return [
+            { stage: 'entered_bot', count: parseInt(counts.entered_bot, 10) },
+            { stage: 'pressed_start', count: parseInt(counts.pressed_start, 10) },
+            { stage: 'pressed_go', count: parseInt(counts.pressed_go, 10) },
+            { stage: 'uploaded_photo', count: parseInt(counts.uploaded_photo, 10) },
+        ];
+    } catch (err) {
+        console.error('Error getting stage stats:', err);
+        return [
+            { stage: 'entered_bot', count: 0 },
+            { stage: 'pressed_start', count: 0 },
+            { stage: 'pressed_go', count: 0 },
+            { stage: 'uploaded_photo', count: 0 },
+        ];
+    }
 }
 
 module.exports = {
   init,
-  logProgress,
+  trackUserAction,
   getTotalUsers,
   getStageStats,
 };

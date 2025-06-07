@@ -1,6 +1,7 @@
 require("dotenv").config();
 const { Telegraf, Markup } = require("telegraf");
-const db = require("./db");
+const { init, trackUserAction, getTotalUsers, getStageStats } = require("./db");
+const db = { init, trackUserAction, getTotalUsers, getStageStats };
 const express = require("express");
 const path = require('path');
 const fs = require('fs');
@@ -37,8 +38,7 @@ bot.start((ctx) => {
   const username = ctx.from.username;
 
   // Логируем в базу, что пользователь зашел и нажал "старт"
-  db.logProgress(userId, username, 'entered_bot');
-  db.logProgress(userId, username, 'pressed_start');
+  db.trackUserAction(userId, username, 'pressed_start_at');
 
   ctx.replyWithHTML(
     `🎨 Привет!\nКруто, что ты здесь — значит, тяга к творчеству у тебя точно есть 😉\nЛови бесплатный урок из нашего курса — попробуй, как это работает изнутри!\nА потом заглянем в твой рисунок и сделаем разбор 🧐 — похвалим, подметим интересное и подскажем, куда расти дальше.`,
@@ -54,7 +54,7 @@ bot.action("go_to_video", (ctx) => {
   const username = ctx.from.username;
 
   // Логируем нажатие кнопки
-  db.logProgress(userId, username, 'pressed_go');
+  db.trackUserAction(userId, username, 'pressed_go_at');
 
   // Убираем кнопку после нажатия
   ctx.answerCbQuery();
@@ -84,7 +84,7 @@ bot.on('photo', (ctx) => {
     const photoFileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
 
     // Логируем отправку фото
-    db.logProgress(userId, username, 'uploaded_photo');
+    db.trackUserAction(userId, username, 'uploaded_photo_at');
 
     // Пересылаем фото админу
     const mainAdminID = adminIDs[0]; 
