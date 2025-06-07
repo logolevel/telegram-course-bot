@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статистика бота</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 2em; background-color: #f4f6f9; color: #333; }
+        .stats-container { max-width: 900px; margin: auto; background-color: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1, h2 { text-align: center; color: #1a1a1a; }
+        .filter-form { text-align: center; margin: 2em 0; }
+        .filter-form input, .filter-form button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin: 0 5px; }
+        .filter-form button { background-color: #007bff; color: white; cursor: pointer; border-color: #007bff; }
+        .filter-form a { color: #007bff; text-decoration: none; line-height: 40px; margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <div class="stats-container">
+        <h1>Статистика по боту</h1>
+        
+        <h2>Всего уникальных пользователей: <%= totalUsers %></h2>
+
+        <div class="filter-form">
+            <form action="/stats" method="get">
+                <label for="month">Месяц:</label>
+                <input type="number" id="month" name="month" min="1" max="12" placeholder="MM">
+                <label for="year">Год:</label>
+                <input type="number" id="year" name="year" min="2024" placeholder="YYYY" value="2025">
+                <button type="submit">Фильтровать</button>
+                <a href="/stats">Сбросить (за все время)</a>
+            </form>
+        </div>
+
+        <h2>Воронка пользователей (<%= currentFilter %>)</h2>
+        <canvas id="funnelChart"></canvas>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('funnelChart').getContext('2d');
+        // Передаем данные из нашего бэкенда в JavaScript на клиенте
+        const stageData = <%- JSON.stringify(stageStats) %>;
+        
+        // Преобразуем названия этапов для более красивого отображения
+        const labels = stageData.map(item => {
+            switch(item.stage) {
+                case 'entered_bot': return 'Зашел в бот';
+                case 'pressed_start': return 'Нажал "Начать"';
+                case 'pressed_go': return 'Нажал "Поехали"';
+                case 'uploaded_photo': return 'Загрузил фото';
+                default: return item.stage;
+            }
+        });
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Количество пользователей',
+                    data: stageData.map(item => item.count),
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(255, 99, 132, 0.6)'
+                    ],
+                    borderColor: [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(255, 99, 132, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1 // Шаг в 1, т.к. пользователи - целые числа
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

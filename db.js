@@ -1,96 +1,116 @@
-const { Pool } = require('pg');
+const { Pool } = require("pg");
 
+// Инициализация пула подключений к вашей базе данных на Railway
 const pool = new Pool({
-	connectionString: process.env.DATABASE_URL,
-	ssl: { rejectUnauthorized: false },
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
 });
 
-// Инициализация таблицы
+/**
+ * @description Инициализирует базу данных, создавая таблицу для отслеживания прогресса пользователей, если она еще не создана.
+ */
 async function init() {
-	// await pool.query(`DROP TABLE IF EXISTS user_progress`);
-
-	await pool.query(`
+  const query = `
     CREATE TABLE IF NOT EXISTS user_progress (
-      user_id BIGINT PRIMARY KEY,
-      username TEXT,
-      step INTEGER DEFAULT 1,
-      sent_photo BOOLEAN DEFAULT FALSE,
-      restart_count INTEGER DEFAULT 0,
-      updated_at TIMESTAMPTZ DEFAULT NOW()
+      id SERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL,
+      username VARCHAR(255),
+      stage VARCHAR(50) NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
     );
-  `);
-	console.log('✅ PostgreSQL: таблица user_progress готова');
+  `;
+  try {
+    await pool.query(`DROP TABLE IF EXISTS user_progress`);
+    await pool.query(query);
+    console.log("Database initialized, user_progress table is ready.");
+  } catch (err) {
+    console.error("Error initializing database:", err);
+    throw err;
+  }
 }
 
-// Создание или обновление пользователя (включает подсчёт рестартов)
-async function upsertUser(userId, username) {
-	await pool.query(`
-    INSERT INTO user_progress (user_id, username)
-    VALUES ($1, $2)
-    ON CONFLICT (user_id) DO UPDATE
-    SET username = EXCLUDED.username;
-  `, [userId, username]);
+/**
+ * @description Записывает этап, который прошел пользователь, в базу данных.
+ * @param {number} userId - ID пользователя Telegram.
+ * @param {string} username - Username пользователя в Telegram.
+ * @param {string} stage - Название этапа (например, 'pressed_start').
+ */
+async function logProgress(userId, username, stage) {
+  const query = `
+    INSERT INTO user_progress (user_id, username, stage)
+    VALUES ($1, $2, $3);
+  `;
+  try {
+    await pool.query(query, [userId, username, stage]);
+    console.log(`Logged progress for user ${userId}: ${stage}`);
+  } catch (err) {
+    console.error(`Error logging progress for user ${userId}:`, err);
+  }
 }
 
-
-// Обновление шага пользователя
-async function updateStep(userId, step) {
-	await pool.query(`
-    UPDATE user_progress
-    SET step = GREATEST(step, $1), updated_at = NOW()
-    WHERE user_id = $2;
-  `, [step, userId]);
+/**
+ * @description Получает общее количество уникальных пользователей, которые взаимодействовали с ботом.
+ * @returns {Promise<string>} Количество пользователей.
+ */
+async function getTotalUsers() {
+  const query = `SELECT COUNT(DISTINCT user_id) FROM user_progress;`;
+  try {
+    const res = await pool.query(query);
+    return res.rows[0].count;
+  } catch (err) {
+    console.error("Error getting total users:", err);
+    return "0";
+  }
 }
 
-// Отметить, что пользователь отправил фото
-async function markPhotoSent(userId) {
-	await pool.query(`
-    UPDATE user_progress
-    SET sent_photo = TRUE, updated_at = NOW()
-    WHERE user_id = $1;
-  `, [userId]);
-}
+/**
+ * @description Получает статистику по этапам воронки.
+ * @param {number|null} month - Номер месяца для фильтрации (1-12).
+ * @param {number|null} year - Год для фильтрации.
+ * @returns {Promise<Array<{stage: string, count: number}>>} Массив объектов с названием этапа и количеством пользователей.
+ */
+async function getStageStats(month, year) {
+  const stagesOrder = [
+    "entered_bot",
+    "pressed_start",
+    "pressed_go",
+    "uploaded_photo",
+  ];
+  let query;
+  const params = [];
 
-// Увеличение счётчика рестартов
-async function incrementRestartCount(userId) {
-	await pool.query(`
-		UPDATE user_progress
-		SET restart_count = restart_count + 1, updated_at = NOW()
-		WHERE user_id = $1;
-	`, [userId]);
-}
+  if (month && year) {
+    query = `SELECT stage, COUNT(DISTINCT user_id) as count
+                 FROM user_progress
+                 WHERE EXTRACT(MONTH FROM created_at) = $1 AND EXTRACT(YEAR FROM created_at) = $2
+                 GROUP BY stage;`;
+    params.push(month, year);
+  } else {
+    query = `SELECT stage, COUNT(DISTINCT user_id) as count
+                 FROM user_progress
+                 GROUP BY stage;`;
+  }
 
-// Получить аналитику
-async function getStats(month = null) {
-	let whereClause = '';
-	let values = [];
-
-	if (month) {
-		const formattedDate = `${month}-01`;
-		whereClause = `WHERE DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', $1::DATE)`;
-		values = [formattedDate];
-	}
-
-	const result = await pool.query(`
-    SELECT
-      COUNT(*) FILTER (WHERE step >= 1) AS step1,
-      COUNT(*) FILTER (WHERE step >= 2) AS step2,
-      COUNT(*) FILTER (WHERE step >= 3) AS step3,
-      COUNT(*) FILTER (WHERE sent_photo = TRUE) AS sent_photos,
-      COUNT(*) AS total,
-      SUM(restart_count) AS total_restarts
-    FROM user_progress
-    ${whereClause};
-  `, values);
-
-	return result.rows[0];
+  try {
+    const res = await pool.query(query, params);
+    const resultsMap = new Map(
+      res.rows.map((row) => [row.stage, parseInt(row.count, 10)])
+    );
+    // Гарантируем, что все этапы будут в итоговом результате в правильном порядке
+    const finalStats = stagesOrder.map((stage) => ({
+      stage,
+      count: resultsMap.get(stage) || 0,
+    }));
+    return finalStats;
+  } catch (err) {
+    console.error("Error getting stage stats:", err);
+    return stagesOrder.map((stage) => ({ stage, count: 0 }));
+  }
 }
 
 module.exports = {
-	init,
-	upsertUser,
-	updateStep,
-	markPhotoSent,
-	incrementRestartCount,
-	getStats
+  init,
+  logProgress,
+  getTotalUsers,
+  getStageStats,
 };
