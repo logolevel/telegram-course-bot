@@ -15,7 +15,7 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Константы из вашего примера
 const video1 = "BAACAgIAAxkBAAIDJWhEcOGXY7u6d9TsmvHCEkQDD357AAKZcQAC6nYhSlYP-N1iRopuNgQ";
-const video2 = "BAACAgIAAxkBAAIDJ2hEcVRicHP0WT2hON2Qq5Q-b3I7AAKdcQAC6nYhStikhv60X81eNgQ";
+const video2 = "DQACAgIAAxkDAAIDOWhEenF69nK4-Ew81B87dL67afjhAAImcgAC6nYhSik4e7m3MnC4NgQ";
 // const video1TimeOut = 988000; // 16 минут 27 секунд
 const video1TimeOut = 20000; // тест 20 секунд
 const video2TimeOut = 40000; // 40 секунд
