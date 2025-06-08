@@ -18,11 +18,13 @@ async function init() {
       created_at TIMESTAMPTZ DEFAULT NOW(),
       pressed_start_at TIMESTAMPTZ,
       pressed_go_at TIMESTAMPTZ,
-      watched_video_1_at TIMESTAMPTZ,       -- НОВАЯ КОЛОНКА
-      uploaded_photo_at TIMESTAMPTZ
+      watched_video_1_at TIMESTAMPTZ,
+      uploaded_photo_at TIMESTAMPTZ,
+      photo_file_ids TEXT[] DEFAULT ARRAY[]::TEXT[]
     );
   `;
   try {
+	await pool.query(`DROP TABLE IF EXISTS users`); // REMOVE
     await pool.query(query);
     console.log('Database initialized, users table is ready.');
   } catch (err) {
@@ -56,6 +58,41 @@ async function trackUserAction(userId, username, stageColumn) {
   } catch (err) {
     console.error(`Error tracking action for user ${userId}:`, err);
   }
+}
+
+/**
+ * @description Добавляет file_id фотографии в массив для конкретного пользователя.
+ * @param {number} userId - ID пользователя Telegram.
+ * @param {string} photoFileId - ID файла фотографии.
+ */
+async function addPhoto(userId, photoFileId) {
+    // Используем функцию array_append для добавления элемента в массив в PostgreSQL
+    const query = `
+        UPDATE users
+        SET photo_file_ids = array_append(photo_file_ids, $2)
+        WHERE user_id = $1;
+    `;
+    try {
+        await pool.query(query, [userId, photoFileId]);
+        console.log(`Added photo ${photoFileId} for user ${userId}`);
+    } catch(err) {
+        console.error(`Error adding photo for user ${userId}:`, err);
+    }
+}
+
+/**
+ * @description Получает список всех пользователей со всеми данными.
+ * @returns {Promise<Array<object>>}
+ */
+async function getAllUsers() {
+    const query = `SELECT * FROM users ORDER BY created_at DESC;`; // Сортируем по дате, чтобы новые были сверху
+    try {
+        const res = await pool.query(query);
+        return res.rows;
+    } catch (err) {
+        console.error('Error getting all users:', err);
+        return [];
+    }
 }
 
 /**
@@ -121,6 +158,8 @@ async function getStageStats(month, year) {
 module.exports = {
   init,
   trackUserAction,
+  addPhoto,
+  getAllUsers,
   getTotalUsers,
   getStageStats,
 };

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список пользователей</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 2em; background-color: #f4f6f9; color: #333; }
+        .container { max-width: 1200px; margin: auto; background-color: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { text-align: center; }
+        nav { text-align: center; margin-bottom: 2em; }
+        nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #f7f7f7; }
+        tr:nth-child(even) { background-color: #fcfcfc; }
+        td a { color: #007bff; }
+        .photo-list a { display: inline-block; margin-right: 10px; }
+        .stage-icon { display: inline-block; width: 18px; height: 18px; border-radius: 50%; text-align: center; color: white; font-size: 12px; line-height: 18px; }
+        .completed { background-color: #28a745; } /* Зеленый */
+        .not-completed { background-color: #dc3545; } /* Красный */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Список пользователей</h1>
+        <nav>
+            <a href="/stats">Статистика / Воронка</a>
+            <a href="/users">Список пользователей</a>
+        </nav>
+        <table>
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Username</th>
+                    <th>Дата регистрации</th>
+                    <th>Этапы</th>
+                    <th>Загруженные фото</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (users.length > 0) { %>
+                    <% users.forEach(user => { %>
+                        <tr>
+                            <td><%= user.user_id %></td>
+                            <td><%= user.username ? `@${user.username}` : 'N/A' %></td>
+                            <td><%= new Date(user.created_at).toLocaleString('ru-RU') %></td>
+                            <td>
+                                <span class="stage-icon <%= user.pressed_start_at ? 'completed' : 'not-completed' %>" title="Нажал Старт">S</span>
+                                <span class="stage-icon <%= user.pressed_go_at ? 'completed' : 'not-completed' %>" title="Нажал Поехали">G</span>
+                                <span class="stage-icon <%= user.watched_video_1_at ? 'completed' : 'not-completed' %>" title="Посмотрел Видео 1">V</span>
+                                <span class="stage-icon <%= user.uploaded_photo_at ? 'completed' : 'not-completed' %>" title="Загрузил Фото">P</span>
+                            </td>
+                            <td class="photo-list">
+                                <% if (user.photo_file_ids && user.photo_file_ids.length > 0) { %>
+                                    <% user.photo_file_ids.forEach((fileId, index) => { %>
+                                        <a href="/view-photo/<%= fileId %>" target="_blank">Фото <%= index + 1 %></a>
+                                    <% }) %>
+                                <% } else { %>
+                                    Нет фото
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="5" style="text-align: center;">Пользователей пока нет.</td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

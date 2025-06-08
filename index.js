@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { Telegraf, Markup } = require("telegraf");
-const { init, trackUserAction, getTotalUsers, getStageStats } = require("./db");
-const db = { init, trackUserAction, getTotalUsers, getStageStats };
+const { init, trackUserAction, addPhoto, getAllUsers, getTotalUsers, getStageStats } = require("./db");
+const db = { init, trackUserAction, addPhoto, getAllUsers, getTotalUsers, getStageStats };
 const express = require("express");
 const path = require('path');
 const fs = require('fs');
@@ -89,11 +89,11 @@ bot.action("watched_video_1", (ctx) => {
 bot.on('photo', (ctx) => {
     const userId = ctx.from.id;
     const username = ctx.from.username;
-    // Берем фото в лучшем качестве
     const photoFileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
 
     // Логируем отправку фото
     db.trackUserAction(userId, username, 'uploaded_photo_at');
+    db.addPhoto(userId, photoFileId);
 
     // Пересылаем фото админу
     const mainAdminID = adminIDs[0]; 
@@ -143,6 +143,31 @@ bot.command('stats', (ctx) => {
 
 
 // --- Express-сервер для статистики и вебхуков ---
+
+// Страница со списком всех пользователей
+app.get("/users", async (req, res) => {
+    try {
+        const users = await db.getAllUsers();
+        res.render('users', { users }); // Рендерим новый шаблон users.ejs
+    } catch (error) {
+        console.error("Error fetching user list:", error);
+        res.status(500).send("Error fetching user list");
+    }
+});
+
+// Просмотр фото по file_id
+// Он получает file_id, запрашивает у Telegram временный путь к файлу и перенаправляет браузер на него.
+app.get("/view-photo/:file_id", async (req, res) => {
+    try {
+        const fileId = req.params.file_id;
+        const file = await bot.telegram.getFile(fileId);
+        const photoUrl = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`;
+        res.redirect(photoUrl);
+    } catch (error) {
+        console.error("Error redirecting to photo:", error);
+        res.status(404).send("File not found or link expired.");
+    }
+});
 
 // Главная страница для проверки, что бот работает
 app.get("/", (req, res) => {
