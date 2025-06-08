@@ -57,12 +57,11 @@ bot.action("go_to_video", (ctx) => {
   ctx.editMessageReplyMarkup(undefined);
 
   // Отправляем первое видео и прикрепляем к нему кнопку
-  ctx.replyWithVideo(video1, {
-      caption: "Нажми, когда закончишь просмотр 👇",
-      ...Markup.inlineKeyboard([
-          Markup.button.callback("Я посмотрел(а) урок", "watched_video_1")
-      ])
-  });
+    ctx.replyWithVideo(video1,
+        Markup.inlineKeyboard([
+            Markup.button.callback("Я посмотрел(а) урок", "watched_video_1")
+        ])
+    );
 });
 
 bot.action("watched_video_1", (ctx) => {
@@ -73,8 +72,8 @@ bot.action("watched_video_1", (ctx) => {
     db.trackUserAction(userId, username, 'watched_video_1_at');
     
     // Убираем кнопку "Я посмотрел(а) урок"
+    ctx.editMessageReplyMarkup(undefined);
     ctx.answerCbQuery();
-    ctx.editMessageCaption(undefined, undefined); // Удаляет и текст, и клавиатуру у сообщения с видео
 
     // Отправляем второе видео и запускаем таймер до следующего сообщения
     ctx.replyWithVideo(video2).then(() => {
