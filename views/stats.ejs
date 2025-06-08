@@ -7,17 +7,28 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 2em; background-color: #f4f6f9; color: #333; }
-        .stats-container { max-width: 900px; margin: auto; background-color: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        /* Контейнер теперь называется одинаково для единообразия */
+        .container { max-width: 900px; margin: auto; background-color: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h1, h2 { text-align: center; color: #1a1a1a; }
-        .filter-form { text-align: center; margin: 2em 0; }
+        
+        /* НОВЫЕ СТИЛИ для навигации */
+        nav { text-align: center; margin-bottom: 2em; }
+        nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; }
+
+        .filter-form { text-align: center; margin-top: 2em; margin-bottom: 2em; }
         .filter-form input, .filter-form button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin: 0 5px; }
         .filter-form button { background-color: #007bff; color: white; cursor: pointer; border-color: #007bff; }
         .filter-form a { color: #007bff; text-decoration: none; line-height: 40px; margin-left: 10px; }
     </style>
 </head>
 <body>
-    <div class="stats-container">
+    <div class="container">
         <h1>Статистика по боту</h1>
+
+        <nav>
+            <a href="/stats">Статистика / Воронка</a>
+            <a href="/users">Список пользователей</a>
+        </nav>
         
         <h2>Всего уникальных пользователей: <%= totalUsers %></h2>
 
@@ -38,15 +49,14 @@
 
     <script>
         const ctx = document.getElementById('funnelChart').getContext('2d');
-        // Передаем данные из нашего бэкенда в JavaScript на клиенте
         const stageData = <%- JSON.stringify(stageStats) %>;
         
-        // Преобразуем названия этапов для более красивого отображения
         const labels = stageData.map(item => {
             switch(item.stage) {
                 case 'entered_bot': return 'Зашел в бот';
                 case 'pressed_start': return 'Нажал "Начать"';
                 case 'pressed_go': return 'Нажал "Поехали"';
+                case 'watched_video_1': return 'Посмотрел Видео 1';
                 case 'uploaded_photo': return 'Загрузил фото';
                 default: return item.stage;
             }
@@ -63,12 +73,14 @@
                         'rgba(54, 162, 235, 0.6)',
                         'rgba(75, 192, 192, 0.6)',
                         'rgba(255, 206, 86, 0.6)',
+                        'rgba(153, 102, 255, 0.6)',
                         'rgba(255, 99, 132, 0.6)'
                     ],
                     borderColor: [
                         'rgba(54, 162, 235, 1)',
                         'rgba(75, 192, 192, 1)',
                         'rgba(255, 206, 86, 1)',
+                        'rgba(153, 102, 255, 1)',
                         'rgba(255, 99, 132, 1)'
                     ],
                     borderWidth: 1
@@ -79,7 +91,7 @@
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            stepSize: 1 // Шаг в 1, т.к. пользователи - целые числа
+                            stepSize: 1
                         }
                     }
                 },

@@ -46,10 +46,10 @@
                             <td><%= user.username ? `@${user.username}` : 'N/A' %></td>
                             <td><%= new Date(user.created_at).toLocaleString('ru-RU') %></td>
                             <td>
-                                <span class="stage-icon <%= user.pressed_start_at ? 'completed' : 'not-completed' %>" title="Нажал Старт">S</span>
-                                <span class="stage-icon <%= user.pressed_go_at ? 'completed' : 'not-completed' %>" title="Нажал Поехали">G</span>
-                                <span class="stage-icon <%= user.watched_video_1_at ? 'completed' : 'not-completed' %>" title="Посмотрел Видео 1">V</span>
-                                <span class="stage-icon <%= user.uploaded_photo_at ? 'completed' : 'not-completed' %>" title="Загрузил Фото">P</span>
+                                <span class="stage-icon <%= user.pressed_start_at ? 'completed' : 'not-completed' %>" title="Нажал Старт">Start</span>
+                                <span class="stage-icon <%= user.pressed_go_at ? 'completed' : 'not-completed' %>" title="Нажал Поехали">Go</span>
+                                <span class="stage-icon <%= user.watched_video_1_at ? 'completed' : 'not-completed' %>" title="Посмотрел Видео 1">Video</span>
+                                <span class="stage-icon <%= user.uploaded_photo_at ? 'completed' : 'not-completed' %>" title="Загрузил Фото">Photo</span>
                             </td>
                             <td class="photo-list">
                                 <% if (user.photo_file_ids && user.photo_file_ids.length > 0) { %>
