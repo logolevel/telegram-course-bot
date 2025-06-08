@@ -24,7 +24,6 @@ async function init() {
     );
   `;
   try {
-	await pool.query(`DROP TABLE IF EXISTS users`); // REMOVE
     await pool.query(query);
     console.log('Database initialized, users table is ready.');
   } catch (err) {
