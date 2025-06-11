@@ -7,6 +7,7 @@ const express = require("express");
 const path = require('path');
 const fs = require('fs');
 const axios = require("axios");
+const basicAuth = require('express-basic-auth');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
@@ -157,8 +158,17 @@ bot.command('stats', (ctx) => {
     }
 });
 
+const adminAuth = basicAuth({
+    users: { [process.env.STOREFRONT_ADMIN_USERNAME]: process.env.STOREFRONT_ADMIN_PASSWORD },
+    challenge: true,
+    realm: 'AdminPanel',
+});
 
-app.get("/users", async (req, res) => {
+app.get("/", (req, res) => {
+  res.send("Hello! Bot server is running correctly.");
+});
+
+app.get("/users", adminAuth, async (req, res) => {
     try {
         const users = await db.getAllUsers();
         res.render('users', { users });
@@ -168,23 +178,7 @@ app.get("/users", async (req, res) => {
     }
 });
 
-app.get("/view-photo/:file_id", async (req, res) => {
-    try {
-        const fileId = req.params.file_id;
-        const file = await bot.telegram.getFile(fileId);
-        const photoUrl = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`;
-        res.redirect(photoUrl);
-    } catch (error) {
-        console.error("Error redirecting to photo:", error);
-        res.status(404).send("File not found or link expired.");
-    }
-});
-
-app.get("/", (req, res) => {
-  res.send("Hello! Bot server is running correctly.");
-});
-
-app.get("/stats", async (req, res) => {
+app.get("/stats", adminAuth, async (req, res) => {
     try {
         const { month, year } = req.query;
         const totalUsers = await db.getTotalUsers();
@@ -197,6 +191,18 @@ app.get("/stats", async (req, res) => {
     } catch (error) {
         console.error("Error fetching stats:", error);
         res.status(500).send("Error fetching statistics");
+    }
+});
+
+app.get("/view-photo/:file_id", adminAuth, async (req, res) => {
+    try {
+        const fileId = req.params.file_id;
+        const file = await bot.telegram.getFile(fileId);
+        const photoUrl = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`;
+        res.redirect(photoUrl);
+    } catch (error) {
+        console.error("Error redirecting to photo:", error);
+        res.status(404).send("File not found or link expired.");
     }
 });
 
