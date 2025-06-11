@@ -27,15 +27,6 @@ async function init() {
     await pool.query(query);
     console.log('Database initialized, users table is ready.');
 
-    // Убедимся, что нужные колонки существуют (для старых версий БД)
-    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20)").catch(() => {});
-    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_photo_message_id BIGINT").catch(() => {});
-    
-    // Эта команда выполнится один раз и очистит структуру таблицы.
-    console.log('Checking for and removing obsolete "state" column...');
-    await pool.query("ALTER TABLE users DROP COLUMN IF EXISTS state;");
-    console.log('"state" column removal process completed.');
-
   } catch (err) {
     console.error('Error initializing database:', err);
     throw err;
