@@ -78,7 +78,7 @@
             <thead>
                 <tr>
                     <th>User ID</th>
-                    <th>Username</th>
+                    <th>Username / Phone</th>
                     <th>Дата регистрации</th>
                     <th>Этапы</th>
                     <th>Загруженные фото</th>
@@ -89,7 +89,7 @@
                     <% users.forEach(user => { %>
                         <tr>
                             <td data-label="User ID"><%= user.user_id %></td>
-                            <td data-label="Username"><%= user.username ? `@${user.username}` : 'N/A' %></td>
+                            <td data-label="Username"><%= user.username ? `@${user.username}` : (user.phone_number ? user.phone_number : 'N/A') %></td>
                             <td data-label="Дата регистрации"><%= new Date(user.created_at).toLocaleString('ru-RU') %></td>
                             <td data-label="Этапы">
                                 <span class="stage-icon <%= user.pressed_start_at ? 'completed' : 'not-completed' %>" title="Нажал Старт">Start</span>
