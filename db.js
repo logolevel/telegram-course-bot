@@ -1,4 +1,5 @@
-// await pool.query(`DROP TABLE IF EXISTS users`);
+// db.js
+
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -7,8 +8,7 @@ const pool = new Pool({
 });
 
 /**
- * @description Инициализирует БД, создавая таблицу `users` с колонками для каждого этапа.
- * Добавлена колонка watched_video_1_at.
+ * @description Инициализирует БД. Добавлены колонки phone_number и state.
  */
 async function init() {
   const query = `
@@ -20,12 +20,19 @@ async function init() {
       pressed_go_at TIMESTAMPTZ,
       watched_video_1_at TIMESTAMPTZ,
       uploaded_photo_at TIMESTAMPTZ,
-      photo_file_ids TEXT[] DEFAULT ARRAY[]::TEXT[]
+      photo_file_ids TEXT[] DEFAULT ARRAY[]::TEXT[],
+      phone_number VARCHAR(20),
+      state VARCHAR(50)
     );
   `;
   try {
     await pool.query(query);
     console.log('Database initialized, users table is ready.');
+
+    // Добавляем новые колонки, если их нет (для существующих баз данных)
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20)").catch(() => {});
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS state VARCHAR(50)").catch(() => {});
+
   } catch (err) {
     console.error('Error initializing database:', err);
     throw err;
@@ -36,7 +43,6 @@ async function init() {
  * @description Отслеживает действие пользователя.
  */
 async function trackUserAction(userId, username, stageColumn) {
-  // Добавили новый этап в "белый список"
   const allowedColumns = ['pressed_start_at', 'pressed_go_at', 'watched_video_1_at', 'uploaded_photo_at'];
   if (!allowedColumns.includes(stageColumn)) {
       console.error(`Invalid stage column: ${stageColumn}`);
@@ -60,12 +66,60 @@ async function trackUserAction(userId, username, stageColumn) {
 }
 
 /**
- * @description Добавляет file_id фотографии в массив для конкретного пользователя.
- * @param {number} userId - ID пользователя Telegram.
- * @param {string} photoFileId - ID файла фотографии.
+ * @description Добавляет номер телефона пользователя и сбрасывает его состояние.
+ * @param {number} userId
+ * @param {string} phoneNumber
+ */
+async function addPhoneNumber(userId, phoneNumber) {
+    const query = `UPDATE users SET phone_number = $1, state = NULL WHERE user_id = $2`;
+    try {
+        await pool.query(query, [phoneNumber, userId]);
+        console.log(`Phone number added for user ${userId}`);
+    } catch(err) {
+        console.error(`Error adding phone number for user ${userId}:`, err);
+    }
+}
+
+/**
+ * @description Устанавливает состояние для пользователя.
+ * @param {number} userId
+ * @param {string | null} state
+ */
+async function setUserState(userId, state) {
+    const query = `
+        INSERT INTO users (user_id, state)
+        VALUES ($1, $2)
+        ON CONFLICT (user_id) DO UPDATE SET state = $2;
+    `;
+    try {
+        await pool.query(query, [userId, state]);
+        console.log(`State '${state}' set for user ${userId}`);
+    } catch(err) {
+        console.error(`Error setting state for user ${userId}:`, err);
+    }
+}
+
+/**
+ * @description Получает данные пользователя по его ID.
+ * @param {number} userId
+ * @returns {Promise<object|null>}
+ */
+async function getUser(userId) {
+    const query = `SELECT * FROM users WHERE user_id = $1`;
+    try {
+        const res = await pool.query(query, [userId]);
+        return res.rows[0] || null;
+    } catch (err) {
+        console.error('Error getting user:', err);
+        return null;
+    }
+}
+
+
+/**
+ * @description Добавляет file_id фотографии.
  */
 async function addPhoto(userId, photoFileId) {
-    // Используем функцию array_append для добавления элемента в массив в PostgreSQL
     const query = `
         UPDATE users
         SET photo_file_ids = array_append(photo_file_ids, $2)
@@ -80,11 +134,10 @@ async function addPhoto(userId, photoFileId) {
 }
 
 /**
- * @description Получает список всех пользователей со всеми данными.
- * @returns {Promise<Array<object>>}
+ * @description Получает список всех пользователей.
  */
 async function getAllUsers() {
-    const query = `SELECT * FROM users ORDER BY created_at DESC;`; // Сортируем по дате, чтобы новые были сверху
+    const query = `SELECT * FROM users ORDER BY created_at DESC;`;
     try {
         const res = await pool.query(query);
         return res.rows;
@@ -98,7 +151,6 @@ async function getAllUsers() {
  * @description Получает общее количество пользователей.
  */
 async function getTotalUsers() {
-    // ... код без изменений ...
     const query = `SELECT COUNT(user_id) FROM users;`;
     try {
         const res = await pool.query(query);
@@ -113,7 +165,6 @@ async function getTotalUsers() {
  * @description Получает статистику по этапам воронки.
  */
 async function getStageStats(month, year) {
-    // Добавили подсчет нового этапа
     let query = `
         SELECT
           COUNT(created_at) AS entered_bot,
@@ -134,7 +185,6 @@ async function getStageStats(month, year) {
         const res = await pool.query(query, params);
         const counts = res.rows[0];
 
-        // Добавили новый этап в итоговый массив для статистики
         return [
             { stage: 'entered_bot', count: parseInt(counts.entered_bot, 10) },
             { stage: 'pressed_start', count: parseInt(counts.pressed_start, 10) },
@@ -161,4 +211,7 @@ module.exports = {
   getAllUsers,
   getTotalUsers,
   getStageStats,
+  addPhoneNumber,
+  setUserState,
+  getUser,
 };
