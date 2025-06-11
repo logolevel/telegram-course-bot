@@ -94,7 +94,9 @@
                                 <% if (user.username) { %>
                                     <a href="https://t.me/<%= user.username %>" target="_blank">@<%= user.username %></a>
                                 <% } else if (user.phone_number) { %>
-                                    <%= user.phone_number.startsWith('+') ? user.phone_number : `+${user.phone_number}` %>
+                                    <%# MODIFIED: Оборачиваем номер телефона в ссылку tel: %>
+                                    <% const clean_phone = user.phone_number.startsWith('+') ? user.phone_number : `+${user.phone_number}`; %>
+                                    <a href="tel:<%= clean_phone %>"><%= clean_phone %></a>
                                 <% } else { %>
                                     N/A
                                 <% } %>
