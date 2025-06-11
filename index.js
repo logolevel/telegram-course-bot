@@ -20,7 +20,7 @@ const video2TimeOut = 40000;
 
 const adminUserName = process.env.ADMIN_USERNAME;
 const adminIDs = (process.env.ADMIN_ID || "").split(',').map(id => id.trim());
-const mainAdminID = adminIDs[1];
+const mainAdminID = adminIDs[0];
 
 db.init().catch(err => {
   console.error("FATAL: Database initialization failed.", err);
