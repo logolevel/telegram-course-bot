@@ -1,5 +1,3 @@
-// db.js
-
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -8,7 +6,7 @@ const pool = new Pool({
 });
 
 /**
- * @description Инициализирует БД. Добавлены колонки phone_number и state.
+ * @description Инициализирует БД. Добавлена колонка last_photo_message_id.
  */
 async function init() {
   const query = `
@@ -22,16 +20,16 @@ async function init() {
       uploaded_photo_at TIMESTAMPTZ,
       photo_file_ids TEXT[] DEFAULT ARRAY[]::TEXT[],
       phone_number VARCHAR(20),
-      state VARCHAR(50)
+      state VARCHAR(50),
+      last_photo_message_id BIGINT
     );
   `;
   try {
     await pool.query(query);
     console.log('Database initialized, users table is ready.');
 
-    // Добавляем новые колонки, если их нет (для существующих баз данных)
-    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20)").catch(() => {});
-    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS state VARCHAR(50)").catch(() => {});
+    // NEW: Добавляем новую колонку, если ее нет
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_photo_message_id BIGINT").catch(() => {});
 
   } catch (err) {
     console.error('Error initializing database:', err);
@@ -48,7 +46,6 @@ async function trackUserAction(userId, username, stageColumn) {
       console.error(`Invalid stage column: ${stageColumn}`);
       return;
   }
-
   const query = `
     INSERT INTO users (user_id, username, ${stageColumn})
     VALUES ($1, $2, NOW())
@@ -56,10 +53,8 @@ async function trackUserAction(userId, username, stageColumn) {
       ${stageColumn} = NOW(),
       username = EXCLUDED.username;
   `;
-
   try {
     await pool.query(query, [userId, username]);
-    console.log(`Tracked action '${stageColumn}' for user ${userId}`);
   } catch (err) {
     console.error(`Error tracking action for user ${userId}:`, err);
   }
@@ -67,14 +62,11 @@ async function trackUserAction(userId, username, stageColumn) {
 
 /**
  * @description Добавляет номер телефона пользователя и сбрасывает его состояние.
- * @param {number} userId
- * @param {string} phoneNumber
  */
 async function addPhoneNumber(userId, phoneNumber) {
     const query = `UPDATE users SET phone_number = $1, state = NULL WHERE user_id = $2`;
     try {
         await pool.query(query, [phoneNumber, userId]);
-        console.log(`Phone number added for user ${userId}`);
     } catch(err) {
         console.error(`Error adding phone number for user ${userId}:`, err);
     }
@@ -82,8 +74,6 @@ async function addPhoneNumber(userId, phoneNumber) {
 
 /**
  * @description Устанавливает состояние для пользователя.
- * @param {number} userId
- * @param {string | null} state
  */
 async function setUserState(userId, state) {
     const query = `
@@ -93,7 +83,6 @@ async function setUserState(userId, state) {
     `;
     try {
         await pool.query(query, [userId, state]);
-        console.log(`State '${state}' set for user ${userId}`);
     } catch(err) {
         console.error(`Error setting state for user ${userId}:`, err);
     }
@@ -101,8 +90,6 @@ async function setUserState(userId, state) {
 
 /**
  * @description Получает данные пользователя по его ID.
- * @param {number} userId
- * @returns {Promise<object|null>}
  */
 async function getUser(userId) {
     const query = `SELECT * FROM users WHERE user_id = $1`;
@@ -115,7 +102,6 @@ async function getUser(userId) {
     }
 }
 
-
 /**
  * @description Добавляет file_id фотографии.
  */
@@ -127,15 +113,22 @@ async function addPhoto(userId, photoFileId) {
     `;
     try {
         await pool.query(query, [userId, photoFileId]);
-        console.log(`Added photo ${photoFileId} for user ${userId}`);
     } catch(err) {
         console.error(`Error adding photo for user ${userId}:`, err);
     }
 }
 
-/**
- * @description Получает список всех пользователей.
- */
+// NEW: Функция для сохранения ID сообщения, отправленного админу
+async function setLastPhotoMessageId(userId, messageId) {
+    const query = `UPDATE users SET last_photo_message_id = $1 WHERE user_id = $2`;
+    try {
+        await pool.query(query, [messageId, userId]);
+    } catch (err) {
+        console.error(`Error setting last_photo_message_id for user ${userId}:`, err);
+    }
+}
+
+// Функции getAllUsers, getTotalUsers, getStageStats остаются без изменений...
 async function getAllUsers() {
     const query = `SELECT * FROM users ORDER BY created_at DESC;`;
     try {
@@ -147,9 +140,6 @@ async function getAllUsers() {
     }
 }
 
-/**
- * @description Получает общее количество пользователей.
- */
 async function getTotalUsers() {
     const query = `SELECT COUNT(user_id) FROM users;`;
     try {
@@ -161,9 +151,6 @@ async function getTotalUsers() {
     }
 }
 
-/**
- * @description Получает статистику по этапам воронки.
- */
 async function getStageStats(month, year) {
     let query = `
         SELECT
@@ -175,16 +162,13 @@ async function getStageStats(month, year) {
         FROM users
     `;
     const params = [];
-
     if (month && year) {
         query += ` WHERE EXTRACT(MONTH FROM created_at) = $1 AND EXTRACT(YEAR FROM created_at) = $2`;
         params.push(month, year);
     }
-
     try {
         const res = await pool.query(query, params);
         const counts = res.rows[0];
-
         return [
             { stage: 'entered_bot', count: parseInt(counts.entered_bot, 10) },
             { stage: 'pressed_start', count: parseInt(counts.pressed_start, 10) },
@@ -194,13 +178,7 @@ async function getStageStats(month, year) {
         ];
     } catch (err) {
         console.error('Error getting stage stats:', err);
-        return [
-            { stage: 'entered_bot', count: 0 },
-            { stage: 'pressed_start', count: 0 },
-            { stage: 'pressed_go', count: 0 },
-            { stage: 'watched_video_1', count: 0 },
-            { stage: 'uploaded_photo', count: 0 },
-        ];
+        return [];
     }
 }
 
@@ -214,4 +192,5 @@ module.exports = {
   addPhoneNumber,
   setUserState,
   getUser,
+  setLastPhotoMessageId,
 };
