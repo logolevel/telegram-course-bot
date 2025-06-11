@@ -1,7 +1,8 @@
 require("dotenv").config();
 const { Telegraf, Markup } = require("telegraf");
-const { init, trackUserAction, addPhoto, getAllUsers, getTotalUsers, getStageStats, addPhoneNumber, setUserState, getUser, setLastPhotoMessageId } = require("./db");
-const db = { init, trackUserAction, addPhoto, getAllUsers, getTotalUsers, getStageStats, addPhoneNumber, setUserState, getUser, setLastPhotoMessageId };
+// MODIFIED: Удалили setUserState из импорта
+const { init, trackUserAction, addPhoto, getAllUsers, getTotalUsers, getStageStats, addPhoneNumber, getUser, setLastPhotoMessageId } = require("./db");
+const db = { init, trackUserAction, addPhoto, getAllUsers, getTotalUsers, getStageStats, addPhoneNumber, getUser, setLastPhotoMessageId };
 const express = require("express");
 const path = require('path');
 const fs = require('fs');
@@ -19,17 +20,13 @@ const video2TimeOut = 40000;
 
 const adminUserName = process.env.ADMIN_USERNAME;
 const adminIDs = (process.env.ADMIN_ID || "").split(',').map(id => id.trim());
-const mainAdminID = adminIDs[1]; // TODO: change to [0] after development
+const mainAdminID = adminIDs[1];
 
 db.init().catch(err => {
   console.error("FATAL: Database initialization failed.", err);
   process.exit(1);
 });
 
-const isValidPhoneNumber = (phone) => {
-    const regex = /^\+\d{10,15}$/;
-    return regex.test(phone);
-};
 
 bot.start((ctx) => {
   const userId = ctx.from.id;
@@ -71,7 +68,7 @@ bot.action("watched_video_1", (ctx) => {
   });
 });
 
-// MODIFIED: Обработка отправки фото пользователем
+// Обработка отправки фото пользователем
 bot.on('photo', async (ctx) => {
     const userId = ctx.from.id;
     const username = ctx.from.username;
@@ -99,22 +96,20 @@ bot.on('photo', async (ctx) => {
             `Мы получили твой рисунок - спасибо!\n\nУ нас нет возможности написать первыми, т.к. у тебя не указан username\n\nЕсли хочешь обсудить рисунок, то напиши нам ${adminUserName} 💌`
         );
         await ctx.reply(
-            'Если тебе будет удобно, то поделись своим номером телефона и мы с свяжемся с тобой.\n\nТы можешь нажать на кнопку ниже, или просто отправить номер в формате +380981234567',
+            'Или, если тебе будет удобно, то поделись своим номером телефона, нажав на кнопку ниже, и мы с тобой свяжемся.',
             Markup.keyboard([
                 Markup.button.contactRequest('📲 Оставить номер телефона')
             ]).resize()
         );
-        await db.setUserState(userId, 'awaiting_phone_number');
     }
 });
 
-// MODIFIED: Обработка получения контакта через кнопку
+// Обработка получения контакта через кнопку
 bot.on('contact', async (ctx) => {
     const userId = ctx.message.contact.user_id;
     const user = await db.getUser(userId);
-
-    if (!user || user.state !== 'awaiting_phone_number') {
-        return;
+    if (!user) {
+        return; // Если по какой-то причине пользователя нет в БД, выходим
     }
 
     const phoneNumber = ctx.message.contact.phone_number;
@@ -123,22 +118,16 @@ bot.on('contact', async (ctx) => {
     await db.addPhoneNumber(userId, phoneNumber);
 
     if (mainAdminID) {
-        // NEW: Формируем текст для ответа
         const replyText = `Пользователь ${firstName} (ID: ${userId}), который отправил это изображение, поделился контактом ниже`;
-        // NEW: Получаем ID сообщения с фото для ответа
         const messageIdToReply = user.last_photo_message_id;
 
         if (messageIdToReply) {
-            // Если ID есть, отправляем сообщение как ответ на фото
             await ctx.telegram.sendMessage(mainAdminID, replyText, {
                 reply_to_message_id: messageIdToReply
             });
         } else {
-            // Если по какой-то причине ID не сохранился, просто отправляем текст
             await ctx.telegram.sendMessage(mainAdminID, replyText);
         }
-
-        // Отправляем сам контакт отдельным сообщением
         await ctx.telegram.sendContact(mainAdminID, phoneNumber, firstName);
     }
 
@@ -148,40 +137,6 @@ bot.on('contact', async (ctx) => {
     );
 });
 
-bot.on('text', async (ctx) => {
-    const userId = ctx.from.id;
-    const user = await db.getUser(userId);
-
-    if (!user || user.state !== 'awaiting_phone_number') {
-        return;
-    }
-
-    const text = ctx.message.text.trim();
-
-    if (isValidPhoneNumber(text)) {
-        await db.addPhoneNumber(userId, text); 
-
-        if (mainAdminID) {
-            const replyText = `Пользователь (ID: ${userId}), который отправил это изображение, ввел номер вручную: ${text}`;
-            const messageIdToReply = user.last_photo_message_id;
-            
-            if (messageIdToReply) {
-                 await ctx.telegram.sendMessage(mainAdminID, replyText, {
-                    reply_to_message_id: messageIdToReply
-                });
-            } else {
-                await ctx.telegram.sendMessage(mainAdminID, `Пользователь (ID: ${userId}) ввел номер вручную: ${text}`);
-            }
-        }
-
-        await ctx.reply(
-            'Мы получили номер телефона. Скоро свяжемся с тобой',
-            Markup.removeKeyboard()
-        );
-    } else {
-        await ctx.reply('Введён некорректный номер. Пожалуйста, введи номер в международном формате, например: +380981234567. Спасибо!');
-    }
-});
 bot.command('stats', (ctx) => {
     const userId = String(ctx.from.id);
     if (adminIDs.includes(userId)) {
@@ -201,6 +156,7 @@ bot.command('stats', (ctx) => {
         console.log(`User ${userId} (not an admin) tried to use /stats command.`);
     }
 });
+
 
 app.get("/users", async (req, res) => {
     try {

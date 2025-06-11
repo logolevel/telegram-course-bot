@@ -6,7 +6,7 @@ const pool = new Pool({
 });
 
 /**
- * @description Инициализирует БД. Добавлена колонка last_photo_message_id.
+ * @description Инициализирует БД.
  */
 async function init() {
   const query = `
@@ -20,7 +20,6 @@ async function init() {
       uploaded_photo_at TIMESTAMPTZ,
       photo_file_ids TEXT[] DEFAULT ARRAY[]::TEXT[],
       phone_number VARCHAR(20),
-      state VARCHAR(50),
       last_photo_message_id BIGINT
     );
   `;
@@ -28,8 +27,14 @@ async function init() {
     await pool.query(query);
     console.log('Database initialized, users table is ready.');
 
-    // NEW: Добавляем новую колонку, если ее нет
+    // Убедимся, что нужные колонки существуют (для старых версий БД)
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20)").catch(() => {});
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_photo_message_id BIGINT").catch(() => {});
+    
+    // Эта команда выполнится один раз и очистит структуру таблицы.
+    console.log('Checking for and removing obsolete "state" column...');
+    await pool.query("ALTER TABLE users DROP COLUMN IF EXISTS state;");
+    console.log('"state" column removal process completed.');
 
   } catch (err) {
     console.error('Error initializing database:', err);
@@ -61,30 +66,14 @@ async function trackUserAction(userId, username, stageColumn) {
 }
 
 /**
- * @description Добавляет номер телефона пользователя и сбрасывает его состояние.
+ * @description Добавляет номер телефона пользователя.
  */
 async function addPhoneNumber(userId, phoneNumber) {
-    const query = `UPDATE users SET phone_number = $1, state = NULL WHERE user_id = $2`;
+    const query = `UPDATE users SET phone_number = $1 WHERE user_id = $2`;
     try {
         await pool.query(query, [phoneNumber, userId]);
     } catch(err) {
         console.error(`Error adding phone number for user ${userId}:`, err);
-    }
-}
-
-/**
- * @description Устанавливает состояние для пользователя.
- */
-async function setUserState(userId, state) {
-    const query = `
-        INSERT INTO users (user_id, state)
-        VALUES ($1, $2)
-        ON CONFLICT (user_id) DO UPDATE SET state = $2;
-    `;
-    try {
-        await pool.query(query, [userId, state]);
-    } catch(err) {
-        console.error(`Error setting state for user ${userId}:`, err);
     }
 }
 
@@ -118,7 +107,9 @@ async function addPhoto(userId, photoFileId) {
     }
 }
 
-// NEW: Функция для сохранения ID сообщения, отправленного админу
+/**
+ * @description Сохраняет ID сообщения, отправленного админу
+ */
 async function setLastPhotoMessageId(userId, messageId) {
     const query = `UPDATE users SET last_photo_message_id = $1 WHERE user_id = $2`;
     try {
@@ -128,7 +119,6 @@ async function setLastPhotoMessageId(userId, messageId) {
     }
 }
 
-// Функции getAllUsers, getTotalUsers, getStageStats остаются без изменений...
 async function getAllUsers() {
     const query = `SELECT * FROM users ORDER BY created_at DESC;`;
     try {
@@ -190,7 +180,6 @@ module.exports = {
   getTotalUsers,
   getStageStats,
   addPhoneNumber,
-  setUserState,
   getUser,
   setLastPhotoMessageId,
 };
