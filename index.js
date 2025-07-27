@@ -1,6 +1,5 @@
 require("dotenv").config();
 const { Telegraf, Markup } = require("telegraf");
-// MODIFIED: Удалили setUserState из импорта
 const { init, trackUserAction, addPhoto, getAllUsers, getTotalUsers, getStageStats, addPhoneNumber, getUser, setLastPhotoMessageId } = require("./db");
 const db = { init, trackUserAction, addPhoto, getAllUsers, getTotalUsers, getStageStats, addPhoneNumber, getUser, setLastPhotoMessageId };
 const express = require("express");
@@ -206,48 +205,57 @@ app.get("/view-photo/:file_id", adminAuth, async (req, res) => {
     }
 });
 
-bot.on("video", async (ctx) => {
-  const video = ctx.message.video;
-  const caption = ctx.message.caption?.trim().toLowerCase();
-  const durationSeconds = video.duration;
-  const durationMs = durationSeconds * 1000;
-  if (caption === "add") {
-    await ctx.reply(
-      `<code>${video.file_id}</code>\nДлительность: ${durationMs} мс`,
-      { parse_mode: "HTML" }
-    );
+
+
+// Новый, универсальный обработчик для постов в канале
+bot.on('channel_post', async (ctx) => {
+  const post = ctx.channelPost;
+
+  if (post.video) {
+    const video = post.video;
+    const caption = post.caption?.trim().toLowerCase();
+    
+    if (caption === "add") {
+      const durationMs = video.duration * 1000;
+      await ctx.reply(
+        `<code>${video.file_id}</code>\nДлительность: ${durationMs} мс`,
+        { parse_mode: "HTML" }
+      );
+    }
+  }
+
+  if (post.document) {
+    const document = post.document;
+    const fileName = document.file_name;
+
+    if (fileName === "add.mp4") {
+      const fileId = document.file_id;
+      const fileLink = await ctx.telegram.getFileLink(fileId);
+      const localPath = path.join(__dirname, "add.mp4");
+      const response = await axios({
+        method: "GET",
+        url: fileLink.href,
+        responseType: "stream",
+      });
+      const writer = fs.createWriteStream(localPath);
+      response.data.pipe(writer);
+      await new Promise((resolve, reject) => {
+        writer.on("finish", resolve);
+        writer.on("error", reject);
+      });
+      const sentMsg = await ctx.replyWithVideoNote({ source: localPath });
+      if (sentMsg.video_note) {
+        await ctx.reply(`✅ file_id видео-кружка: ${sentMsg.video_note.file_id}`);
+        await ctx.reply(`Длительность: ${sentMsg.video_note.duration} секунд`);
+      } else {
+        await ctx.reply("⚠️ Что-то пошло не так, видео-кружок не получен.");
+      }
+      fs.unlinkSync(localPath);
+    }
   }
 });
 
-bot.on("document", async (ctx) => {
-  const fileName = ctx.message.document.file_name;
-  if (fileName !== "add.mp4") {
-    return;
-  }
-  const fileId = ctx.message.document.file_id;
-  const fileLink = await ctx.telegram.getFileLink(fileId);
-  const localPath = path.join(__dirname, "add.mp4");
-  const response = await axios({
-    method: "GET",
-    url: fileLink.href,
-    responseType: "stream",
-  });
-  const writer = fs.createWriteStream(localPath);
-  response.data.pipe(writer);
-  await new Promise((resolve, reject) => {
-    writer.on("finish", resolve);
-    writer.on("error", reject);
-  });
-  const sentMsg = await ctx.replyWithVideoNote({ source: localPath });
-  if (sentMsg.video_note) {
-    await ctx.reply(`✅ file_id видео-кружка: ${sentMsg.video_note.file_id}`);
-    await ctx.reply(`Длительность: ${sentMsg.video_note.duration} секунд`);
-  } else {
-    await ctx.reply("⚠️ Что-то пошло не так, видео-кружок не получен.");
-  }
-  fs.unlinkSync(localPath);
-});
-
+// TODO: For Prod
 const secretPath = process.env.SECRET_PATH;
 app.use(bot.webhookCallback(`/${secretPath}`));
 bot.telegram.setWebhook(`${process.env.BOT_URL}/${secretPath}`);
@@ -255,3 +263,8 @@ bot.telegram.setWebhook(`${process.env.BOT_URL}/${secretPath}`);
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Bot is running on port ${process.env.PORT || 3000}`);
 });
+
+// TODO: For Dev
+// bot.launch(() => {
+//     console.log("Bot has been launched via long polling...");
+// });
