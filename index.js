@@ -258,9 +258,9 @@ bot.on('channel_post', async (ctx) => {
 });
 
 // TODO: For Prod START
-// const secretPath = process.env.SECRET_PATH;
-// app.use(bot.webhookCallback(`/${secretPath}`));
-// bot.telegram.setWebhook(`${process.env.BOT_URL}/${secretPath}`);
+const secretPath = process.env.SECRET_PATH;
+app.use(bot.webhookCallback(`/${secretPath}`));
+bot.telegram.setWebhook(`${process.env.BOT_URL}/${secretPath}`);
 // TODO: For Prod END
 
 app.listen(process.env.PORT || 3000, () => {
@@ -268,7 +268,7 @@ app.listen(process.env.PORT || 3000, () => {
 });
 
 // TODO: For Dev START
-bot.launch(() => {
-    console.log("Bot has been launched via long polling...");
-});
+// bot.launch(() => {
+//     console.log("Bot has been launched via long polling...");
+// });
 // TODO: For Dev END
