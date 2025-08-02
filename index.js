@@ -61,7 +61,7 @@ bot.action("watched_video_1", (ctx) => {
   db.trackUserAction(userId, username, 'watched_video_1_at');
   ctx.editMessageReplyMarkup(undefined);
   ctx.answerCbQuery();
-  ctx.replyWithVideo(video2).then(() => {
+  ctx.replyWithVideoNote(video2).then(() => {
     setTimeout(() => {
       ctx.replyWithHTML(
         `📎 Чтобы мы сделали разбор, прикрепи фото своего рисунка — просто нажми на скрепку внизу и выбери изображение.\n\nЖдём твою работу, чтобы дать обратную связь! 🖼`
@@ -257,16 +257,18 @@ bot.on('channel_post', async (ctx) => {
   }
 });
 
-// TODO: For Prod
-const secretPath = process.env.SECRET_PATH;
-app.use(bot.webhookCallback(`/${secretPath}`));
-bot.telegram.setWebhook(`${process.env.BOT_URL}/${secretPath}`);
+// TODO: For Prod START
+// const secretPath = process.env.SECRET_PATH;
+// app.use(bot.webhookCallback(`/${secretPath}`));
+// bot.telegram.setWebhook(`${process.env.BOT_URL}/${secretPath}`);
+// TODO: For Prod END
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Bot is running on port ${process.env.PORT || 3000}`);
 });
 
-// TODO: For Dev
-// bot.launch(() => {
-//     console.log("Bot has been launched via long polling...");
-// });
+// TODO: For Dev START
+bot.launch(() => {
+    console.log("Bot has been launched via long polling...");
+});
+// TODO: For Dev END
