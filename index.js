@@ -13,8 +13,7 @@ app.set('views', path.join(__dirname, 'views'));
 
 const adminUserName = process.env.ADMIN_USERNAME;
 const adminIDs = (process.env.ADMIN_ID || "").split(',').map(id => id.trim());
-// const mainAdminID = adminIDs[0];
-const mainAdminID = 579500550; // ID FOR TESTING PURPOSES
+const mainAdminID = adminIDs[0];
 const CHANNEL_URL = "https://t.me/art_therapy_artvibe";
 const COURSE_URL = "https://google.com";
 
