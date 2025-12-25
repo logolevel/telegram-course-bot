@@ -20,6 +20,15 @@ const COURSE_URL = "https://google.com";
 
 const VIDEO_ID_PRACTICE = "BAACAgIAAyEFAASeM37lAAMnaU2eATJSVSSmfCbtVVj9SEEHRV4AAgOMAAJFwXFK5zMhImFGFeg2BA"; 
 
+const getFeedbackText = (type) => {
+    const map = {
+        'easier': '🌿 Стало чуть легче',
+        'no_change': '➖ Почти без изменений',
+        'harder': '⚠️ Стало тяжелее'
+    };
+    return map[type] || 'Не указано';
+};
+
 db.init().catch(err => {
   console.error("FATAL: Database initialization failed.", err);
   process.exit(1);
@@ -215,8 +224,10 @@ bot.on('photo', async (ctx) => {
 
         await db.trackUserAction(userId, username, 'uploaded_photo_at');
         await db.addPhoto(userId, photoFileId);
-
-        const adminCaption = `🎨 Практика. От: @${username || userId}\nСостояние: ${user.feedback_type || 'не указано'}\nТекст: ${caption}`;
+        
+        const stateText = getFeedbackText(user.feedback_type);
+        const adminCaption = `🎨 Практика. От: @${username || userId}\nСостояние: ${stateText}\nТекст: ${caption}`;
+        
         const sentMessage = await ctx.telegram.sendPhoto(mainAdminID, photoFileId, { caption: adminCaption });
         
         if (sentMessage) await db.setLastPhotoMessageId(userId, sentMessage.message_id);
@@ -244,7 +255,9 @@ bot.on('text', async (ctx) => {
     const state = user ? user.current_state : null;
 
     if (state === 'WAITING_FOR_CONTENT') {
-        const adminMsg = `💬 Отзыв/Слово. От: @${username || userId}\nСостояние: ${user.feedback_type || 'не указано'}\nСообщение: ${text}`;
+        const stateText = getFeedbackText(user.feedback_type);
+        const adminMsg = `💬 Отзыв/Слово. От: @${username || userId}\nСостояние: ${stateText}\nСообщение: ${text}`;
+        
         await ctx.telegram.sendMessage(mainAdminID, adminMsg);
 
         if (!username && adminUserName) {
