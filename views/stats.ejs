@@ -7,31 +7,27 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 2em; background-color: #f4f6f9; color: #333; }
-        /* Контейнер теперь называется одинаково для единообразия */
         .container { max-width: 900px; margin: auto; background-color: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h1, h2 { text-align: center; color: #1a1a1a; }
-        
-        /* НОВЫЕ СТИЛИ для навигации */
         nav { text-align: center; margin-bottom: 2em; }
-        nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; }
+        nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; font-size: 18px; }
 
-        .filter-form { text-align: center; margin-top: 2em; margin-bottom: 2em; }
+        .filter-form { text-align: center; margin-top: 2em; margin-bottom: 2em; background: #f8f9fa; padding: 15px; border-radius: 8px; }
         .filter-form input, .filter-form button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin: 0 5px; }
         .filter-form button { background-color: #007bff; color: white; cursor: pointer; border-color: #007bff; }
-        .filter-form a { color: #007bff; text-decoration: none; line-height: 40px; margin-left: 10px; }
+        .filter-form a { color: #6c757d; text-decoration: none; line-height: 40px; margin-left: 10px; font-size: 14px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Статистика по боту</h1>
+        <h1>📊 Статистика по боту</h1>
 
         <nav>
             <a href="/stats">Статистика</a>
-            </br></br></br>
-            <a href="/users">Список пользователей</a>
+            <a href="/users">Пользователи</a>
         </nav>
         
-        <h2>Всего уникальных пользователей: <%= totalUsers %></h2>
+        <h2>Всего пользователей в базе: <b><%= totalUsers %></b></h2>
 
         <div class="filter-form">
             <form action="/stats" method="get">
@@ -40,66 +36,71 @@
                 <label for="year">Год:</label>
                 <input type="number" id="year" name="year" min="2024" placeholder="YYYY" value="2025">
                 <button type="submit">Фильтровать</button>
-                <a href="/stats">Сбросить (за все время)</a>
+                <a href="/stats">Сбросить</a>
             </form>
         </div>
 
-        <h2>Воронка пользователей (<%= currentFilter %>)</h2>
+        <h2>Воронка (<%= currentFilter %>)</h2>
         <canvas id="funnelChart"></canvas>
     </div>
 
     <script>
         const ctx = document.getElementById('funnelChart').getContext('2d');
+        // Данные приходят из db.js, где мы уже задали английские названия этапов в поле 'stage'
         const stageData = <%- JSON.stringify(stageStats) %>;
         
-        const labels = stageData.map(item => {
-            switch(item.stage) {
-                case 'entered_bot': return 'Зашел в бот';
-                case 'pressed_start': return 'Нажал "Начать"';
-                case 'pressed_go': return 'Нажал "Поехали"';
-                case 'watched_video_1': return 'Посмотрел Видео 1';
-                case 'uploaded_photo': return 'Загрузил фото';
-                default: return item.stage;
-            }
-        });
+        // Функция перевода ключей из базы на русский язык для графика
+        const getLabel = (serverStageName) => {
+            const map = {
+                'Entered Bot (Total)': 'Зашли в бот (Всего)',
+                'Started Practice (New)': 'Начали практику (Новая)',
+                'Watched Video': 'Включили видео',
+                'Finished Practice': 'Завершили практику',
+                'Uploaded Photo': 'Загрузили фото',
+                'Old Flow Start': 'Старая воронка (Start)'
+            };
+            return map[serverStageName] || serverStageName;
+        };
+
+        const labels = stageData.map(item => getLabel(item.stage));
+        const dataValues = stageData.map(item => item.count);
 
         new Chart(ctx, {
-            type: 'bar',
+            type: 'bar', // bar chart лучше для сравнения этапов
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Количество пользователей',
-                    data: stageData.map(item => item.count),
+                    label: 'Пользователи',
+                    data: dataValues,
                     backgroundColor: [
-                        'rgba(54, 162, 235, 0.6)',
-                        'rgba(75, 192, 192, 0.6)',
-                        'rgba(255, 206, 86, 0.6)',
-                        'rgba(153, 102, 255, 0.6)',
-                        'rgba(255, 99, 132, 0.6)'
+                        'rgba(108, 117, 125, 0.5)', // Entered - Grey
+                        'rgba(40, 167, 69, 0.6)',   // Started - Green
+                        'rgba(23, 162, 184, 0.6)',  // Video - Cyan
+                        'rgba(255, 193, 7, 0.6)',   // Finished - Yellow
+                        'rgba(255, 99, 132, 0.6)',  // Photo - Red
+                        'rgba(200, 200, 200, 0.3)'  // Old - Light Grey
                     ],
                     borderColor: [
-                        'rgba(54, 162, 235, 1)',
-                        'rgba(75, 192, 192, 1)',
-                        'rgba(255, 206, 86, 1)',
-                        'rgba(153, 102, 255, 1)',
-                        'rgba(255, 99, 132, 1)'
+                        'rgba(108, 117, 125, 1)',
+                        'rgba(40, 167, 69, 1)',
+                        'rgba(23, 162, 184, 1)',
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(200, 200, 200, 1)'
                     ],
                     borderWidth: 1
                 }]
             },
             options: {
+                responsive: true,
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
+                        ticks: { stepSize: 1 }
                     }
                 },
                 plugins: {
-                    legend: {
-                        display: false
-                    }
+                    legend: { display: false }
                 }
             }
         });

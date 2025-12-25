@@ -1,11 +1,8 @@
 require("dotenv").config();
 const { Telegraf, Markup } = require("telegraf");
-const { init, trackUserAction, addPhoto, getAllUsers, getTotalUsers, getStageStats, addPhoneNumber, getUser, setLastPhotoMessageId } = require("./db");
-const db = { init, trackUserAction, addPhoto, getAllUsers, getTotalUsers, getStageStats, addPhoneNumber, getUser, setLastPhotoMessageId };
+const db = require("./db");
 const express = require("express");
 const path = require('path');
-const fs = require('fs');
-const axios = require("axios");
 const basicAuth = require('express-basic-auth');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -14,130 +11,285 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// const video1 = "BAACAgIAAxkBAAIDJWhEcOGXY7u6d9TsmvHCEkQDD357AAKZcQAC6nYhSlYP-N1iRopuNgQ";
-const video1 = "BAACAgIAAyEFAASeM37lAAMIaIaCThTrGlLi1L5jdneRnCnuj8kAAs19AAJOMjhISQzIAXJHN282BA";
-// const video2 = "DQACAgIAAxkDAAIDOWhEenF69nK4-Ew81B87dL67afjhAAImcgAC6nYhSik4e7m3MnC4NgQ";
-const video2 = "DQACAgIAAyEGAASeM37lAAMFaIaBEcZfpupDfJwHTT6DaZK1plsAArl9AAJOMjhIG-GCSykQIKA2BA";
-const video2TimeOut = 40000;
-
 const adminUserName = process.env.ADMIN_USERNAME;
 const adminIDs = (process.env.ADMIN_ID || "").split(',').map(id => id.trim());
-const mainAdminID = adminIDs[0];
+// const mainAdminID = adminIDs[0];
+const mainAdminID = 579500550; // ID FOR TESTING PURPOSES
+const CHANNEL_URL = "https://t.me/art_therapy_artvibe";
+const COURSE_URL = "https://google.com";
+
+const VIDEO_ID_PRACTICE = "BAACAgIAAyEFAASeM37lAAMnaU2eATJSVSSmfCbtVVj9SEEHRV4AAgOMAAJFwXFK5zMhImFGFeg2BA"; 
 
 db.init().catch(err => {
   console.error("FATAL: Database initialization failed.", err);
   process.exit(1);
 });
 
-
-bot.start((ctx) => {
+// 1. STATE: START
+bot.start(async (ctx) => {
   const userId = ctx.from.id;
   const username = ctx.from.username;
-  db.trackUserAction(userId, username, 'pressed_start_at');
-  ctx.replyWithHTML(
-    `🎨 Привет!\n\nКруто, что ты здесь — значит, тяга к творчеству у тебя точно есть 😉\n\nЛови бесплатный урок из нашего курса — попробуй, как это работает изнутри!\n\nА потом заглянем в твой рисунок и сделаем разбор 🧐 — похвалим, подметим интересное и подскажем, куда расти дальше.`,
+  
+  await db.setUserState(userId, 'START');
+  await db.trackUserAction(userId, username, 'pressed_start_at');
+
+  await ctx.replyWithHTML(
+    `Привет 🤍\n\nЕсли ты здесь — возможно, внутри тревожно, шумно или напряжённо.\n\nМы сделаем короткую арт-практику, чтобы стало чуть тише.\n\n<b>Важно:</b>\n— рисовать красиво не нужно\n— здесь нет «правильно» или «неправильно»\n— ты ничего не должна и можешь остановиться в любой момент`,
     Markup.inlineKeyboard([
-      Markup.button.callback("Готов(а)? Поехали! 🚀", "go_to_video"),
+      [Markup.button.callback("▶️ Начать практику", "PREPARE_PRACTICE")],
+      [Markup.button.url("↩️ Вернуться в канал", CHANNEL_URL)]
     ])
   );
 });
 
-bot.action("go_to_video", (ctx) => {
-  const userId = ctx.from.id;
-  const username = ctx.from.username;
-  db.trackUserAction(userId, username, 'pressed_go_at');
-  ctx.answerCbQuery();
-  ctx.editMessageReplyMarkup(undefined);
-  ctx.replyWithVideo(video1,
-    Markup.inlineKeyboard([
-      Markup.button.callback("Я посмотрел(а) урок", "watched_video_1")
-    ])
-  );
+// 2. STATE: PREPARE_PRACTICE
+bot.action("PREPARE_PRACTICE", async (ctx) => {
+    const userId = ctx.from.id;
+    const username = ctx.from.username;
+    
+    await db.setUserState(userId, 'PREPARE');
+    await db.trackUserAction(userId, username, 'practice_start_at');
+    
+    await ctx.answerCbQuery();
+    await ctx.replyWithHTML(
+        `Практика займёт около 10 минут.\n\nТебе нужен:\n— лист бумаги\n— цветные карандаши или чем ты любишь рисовать\n\nЭто не обучение и не тест.\nПросто попробуй сделать для себя.`,
+        Markup.inlineKeyboard([
+            [Markup.button.callback("🎥 Включить практику", "START_VIDEO")],
+            [Markup.button.url("↩️ Не сейчас", CHANNEL_URL)]
+        ])
+    );
 });
 
-bot.action("watched_video_1", (ctx) => {
-  const userId = ctx.from.id;
-  const username = ctx.from.username;
-  db.trackUserAction(userId, username, 'watched_video_1_at');
-  ctx.editMessageReplyMarkup(undefined);
-  ctx.answerCbQuery();
-  ctx.replyWithVideoNote(video2).then(() => {
-    setTimeout(() => {
-      ctx.replyWithHTML(
-        `📎 Чтобы мы сделали разбор, прикрепи фото своего рисунка — просто нажми на скрепку внизу и выбери изображение.\n\nЖдём твою работу, чтобы дать обратную связь! 🖼`
-      );
-    }, video2TimeOut);
-  });
+// 3. STATE: VIDEO
+bot.action("START_VIDEO", async (ctx) => {
+    const userId = ctx.from.id;
+    const username = ctx.from.username;
+
+    await db.setUserState(userId, 'WATCHING_VIDEO');
+    await db.trackUserAction(userId, username, 'practice_video_at');
+
+    await ctx.answerCbQuery();
+    await ctx.editMessageReplyMarkup(undefined); 
+
+    await ctx.replyWithVideo(VIDEO_ID_PRACTICE, {
+        caption: "👉 Арт-практика: внутренняя опора (10 минут)",
+        ...Markup.inlineKeyboard([
+            [Markup.button.callback("✅ Я посмотрел/a видео", "VIDEO_WATCHED")]
+        ])
+    });
 });
 
-// Обработка отправки фото пользователем
+bot.action("VIDEO_WATCHED", async (ctx) => {
+    const userId = ctx.from.id;
+    await ctx.answerCbQuery();
+    await sendResultFixation(ctx, userId);
+});
+
+async function sendResultFixation(ctx, userId) {
+    await db.setUserState(userId, 'RESULT_FIXATION');
+    
+    try {
+        await ctx.editMessageReplyMarkup(undefined);
+    } catch (e) { /* ignore */ }
+
+    const message = `Спасибо, что попробовала 🤍\n\nКоротко отметь для себя:\nесли оценить состояние от 0 до 10\n(где 10 — максимум напряжения)\n\n👉 на сколько было ДО\n👉 и на сколько стало ПОСЛЕ\n\nДаже если изменилось совсем чуть-чуть — это важно.`;
+    
+    await ctx.replyWithHTML(message, Markup.inlineKeyboard([
+        [Markup.button.callback("🌿 Стало чуть легче", "RESULT_EASIER")],
+        [Markup.button.callback("➖ Почти без изменений", "RESULT_NO_CHANGE")],
+        [Markup.button.callback("⚠️ Стало тяжелее", "RESULT_HARDER")]
+    ]));
+}
+
+// 4. BRANCH: EASIER
+bot.action("RESULT_EASIER", async (ctx) => {
+    const userId = ctx.from.id;
+    await db.trackUserAction(userId, ctx.from.username, 'practice_completed_at', { feedback_type: 'easier' });
+    await db.setUserState(userId, 'EASIER_MENU');
+    
+    await ctx.answerCbQuery();
+    await ctx.replyWithHTML(
+        `Это важный сигнал 🤍\nЗначит, такой способ может тебе подходить.\n\nЕсли захочешь, можешь:\n— отправить рисунок\n— или написать пару слов о своих ощущениях\n\nЭто не оценка и не разбор.\nИногда Анастасия отвечает лично, если есть запрос и ресурс.\n\nНо отправлять — не обязательно.`,
+        Markup.inlineKeyboard([
+            [Markup.button.callback("📎 Отправить рисунок", "INPUT_DRAWING")],
+            [Markup.button.callback("💬 Написать ощущения", "INPUT_TEXT")],
+            [Markup.button.callback("↩️ Не хочу отправлять", "NO_SEND_EXIT")]
+        ])
+    );
+});
+
+// 5. BRANCH: NO_CHANGE
+bot.action("RESULT_NO_CHANGE", async (ctx) => {
+    const userId = ctx.from.id;
+    await db.trackUserAction(userId, ctx.from.username, 'practice_completed_at', { feedback_type: 'no_change' });
+    
+    await ctx.answerCbQuery();
+    await ctx.replyWithHTML(
+        `Это нормально 🤍\nИногда с первого раза тело не сразу откликается —\nособенно если ты очень устала.\n\nХочешь попробовать микро-вариант на 2 минуты?`,
+        Markup.inlineKeyboard([
+            [Markup.button.callback("⏱ Да, 2 минуты", "MICRO_PRACTICE")],
+            [Markup.button.callback("↩️ Нет, спасибо", "GOTO_EASIER_OPTIONS")]
+        ])
+    );
+});
+
+// 6. MICRO_PRACTICE
+bot.action("MICRO_PRACTICE", async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.replyWithHTML(
+        `Положи руку на грудь или живот.\nСделай 5 медленных выдохов.\n\nТеперь нарисуй 10 коротких штрихов:\nкаждый штрих — на выдохе.\nНе думай, просто веди руку.\n\nОстановись и отметь:\nгде в теле стало чуть мягче?`
+    );
+    
+    setTimeout(async () => {
+         await ctx.replyWithHTML(
+            `Если хочешь, можешь поделиться результатом:`,
+            Markup.inlineKeyboard([
+                [Markup.button.callback("📎 Отправить рисунок", "INPUT_DRAWING")],
+                [Markup.button.callback("💬 Написать ощущения", "INPUT_TEXT")],
+                [Markup.button.callback("↩️ Не хочу отправлять", "NO_SEND_EXIT")]
+            ])
+        );
+    }, 4000); 
+});
+
+bot.action("GOTO_EASIER_OPTIONS", async (ctx) => {
+    const userId = ctx.from.id;
+    await db.setUserState(userId, 'EASIER_MENU');
+    await ctx.answerCbQuery();
+    await ctx.replyWithHTML(
+        `Хорошо 🤍\n\nЕсли захочешь, можешь отправить рисунок или написать пару слов.`,
+        Markup.inlineKeyboard([
+            [Markup.button.callback("📎 Отправить рисунок", "INPUT_DRAWING")],
+            [Markup.button.callback("💬 Написать ощущения", "INPUT_TEXT")],
+            [Markup.button.callback("↩️ Не хочу отправлять", "NO_SEND_EXIT")]
+        ])
+    );
+});
+
+// 7. BRANCH: HARDER
+bot.action("RESULT_HARDER", async (ctx) => {
+    const userId = ctx.from.id;
+    await db.trackUserAction(userId, ctx.from.username, 'practice_completed_at', { feedback_type: 'harder' });
+    await db.setUserState(userId, 'HARDER_MENU');
+    
+    await ctx.answerCbQuery();
+    await ctx.replyWithHTML(
+        `Спасибо, что отметила это 🤍\nИногда практика может поднять напряжение —\nэто не ошибка и не «что-то не так».\n\nСейчас важно не углубляться.\nСделай, пожалуйста, 3 медленных выдоха.\n\nЕсли хочешь, можешь написать\nодним словом, что поднялось.\nИногда Анастасия отвечает и подсказывает,\nкак можно бережно поддержать себя дальше.\n\nТы ничего не обязана отправлять.`,
+        Markup.inlineKeyboard([
+            [Markup.button.callback("💬 Написать слово", "INPUT_TEXT")],
+            [Markup.button.url("↩️ Вернуться в канал", CHANNEL_URL)]
+        ])
+    );
+});
+
+// 8. INPUT HANDLERS SETUP
+bot.action("INPUT_DRAWING", async (ctx) => {
+    const userId = ctx.from.id;
+    await db.setUserState(userId, 'WAITING_FOR_CONTENT');
+    await ctx.answerCbQuery();
+    await ctx.replyWithHTML(
+        `Если тебе ок — прикрепи фото рисунка 📎\n\nМожно без объяснений.\nЕсли хочешь — добавь 1–2 фразы:\n— что ты чувствовала ДО\n— что стало ПОСЛЕ\n\nЗдесь нет оценки «красиво / некрасиво».`
+    );
+});
+
+bot.action("INPUT_TEXT", async (ctx) => {
+    const userId = ctx.from.id;
+    await db.setUserState(userId, 'WAITING_FOR_CONTENT');
+    await ctx.answerCbQuery();
+    await ctx.replyWithHTML(`Я слушаю. Напиши всё, чем хочешь поделиться 🤍`);
+});
+
+// 9. HANDLING USER CONTENT (Photo & Text)
+
+// Обработка ФОТО
 bot.on('photo', async (ctx) => {
     const userId = ctx.from.id;
     const username = ctx.from.username;
-    const photoFileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
-
-    await db.trackUserAction(userId, username, 'uploaded_photo_at');
-    await db.addPhoto(userId, photoFileId);
-
-    const caption = username
-      ? `Рисунок от пользователя @${username}`
-      : `Рисунок от пользователя ID: ${userId}`;
-      
-    const sentMessage = await ctx.telegram.sendPhoto(mainAdminID, photoFileId, { caption });
     
-    if (sentMessage) {
-        await db.setLastPhotoMessageId(userId, sentMessage.message_id);
-    }
+    const user = await db.getUser(userId);
+    const state = user ? user.current_state : null;
 
-    if (username) {
-        await ctx.replyWithHTML(
-            `Мы получили твой рисунок - спасибо!\n\nСовсем скоро свяжемся с тобой.\nОжидай сообщения 💌`
-        );
+    if (state === 'WAITING_FOR_CONTENT' || state === 'EASIER_MENU' || state === 'HARDER_MENU') {
+        const photoFileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+        const caption = ctx.message.caption || "";
+
+        await db.trackUserAction(userId, username, 'uploaded_photo_at');
+        await db.addPhoto(userId, photoFileId);
+
+        const adminCaption = `🎨 Практика. От: @${username || userId}\nСостояние: ${user.feedback_type || 'не указано'}\nТекст: ${caption}`;
+        const sentMessage = await ctx.telegram.sendPhoto(mainAdminID, photoFileId, { caption: adminCaption });
+        
+        if (sentMessage) await db.setLastPhotoMessageId(userId, sentMessage.message_id);
+
+        if (!username && adminUserName) {
+             await ctx.reply(`Спасибо за рисунок! У тебя скрыт username, поэтому я не смогу написать тебе в личку. Если нужен личный контакт, напиши: ${adminUserName}`);
+        }
+
+        await sendConfirmation(ctx);
+        await db.setUserState(userId, 'COMPLETED');
     } else {
-        await ctx.replyWithHTML(
-            `Мы получили твой рисунок - спасибо!\n\nУ нас нет возможности написать первыми, т.к. у тебя не указан username\n\nЕсли хочешь обсудить рисунок, то напиши нам ${adminUserName} 💌`
-        );
-        await ctx.reply(
-            'Или, если тебе будет удобно, то поделись своим номером телефона, нажав на кнопку ниже, и мы с тобой свяжемся.',
-            Markup.keyboard([
-                Markup.button.contactRequest('📲 Оставить номер телефона')
-            ]).resize()
-        );
+        await ctx.reply("Я получил фото, но сейчас я не ожидаю его в рамках практики. Если ты хотел начать сначала, нажми /start");
     }
 });
 
-// Обработка получения контакта через кнопку
-bot.on('contact', async (ctx) => {
-    const userId = ctx.message.contact.user_id;
+// Обработка ТЕКСТА
+bot.on('text', async (ctx) => {
+    const userId = ctx.from.id;
+    const username = ctx.from.username;
+    const text = ctx.message.text;
+
+    if (text.startsWith('/')) return;
+
     const user = await db.getUser(userId);
-    if (!user) {
-        return; // Если по какой-то причине пользователя нет в БД, выходим
-    }
+    const state = user ? user.current_state : null;
 
-    const phoneNumber = ctx.message.contact.phone_number;
-    const firstName = ctx.message.contact.first_name;
+    if (state === 'WAITING_FOR_CONTENT') {
+        const adminMsg = `💬 Отзыв/Слово. От: @${username || userId}\nСостояние: ${user.feedback_type || 'не указано'}\nСообщение: ${text}`;
+        await ctx.telegram.sendMessage(mainAdminID, adminMsg);
 
-    await db.addPhoneNumber(userId, phoneNumber);
-
-    if (mainAdminID) {
-        const replyText = `Пользователь ${firstName} (ID: ${userId}), который отправил это изображение, поделился контактом ниже`;
-        const messageIdToReply = user.last_photo_message_id;
-
-        if (messageIdToReply) {
-            await ctx.telegram.sendMessage(mainAdminID, replyText, {
-                reply_to_message_id: messageIdToReply
-            });
-        } else {
-            await ctx.telegram.sendMessage(mainAdminID, replyText);
+        if (!username && adminUserName) {
+             await ctx.reply(`Спасибо за сообщение! У тебя скрыт username, поэтому я не смогу написать тебе в личку. Если нужен личный контакт, напиши: ${adminUserName}`);
         }
-        await ctx.telegram.sendContact(mainAdminID, phoneNumber, firstName);
-    }
 
-    await ctx.reply(
-        'Мы получили номер телефона. Скоро свяжемся с тобой',
-        Markup.removeKeyboard()
+        await sendConfirmation(ctx);
+        await db.setUserState(userId, 'COMPLETED');
+    } 
+});
+
+// 10. END SCENARIOS
+
+// Scenario 1: Successful send
+async function sendConfirmation(ctx) {
+    await ctx.replyWithHTML(
+        `Спасибо 🤍 Я получила.\n\nЕсли у Анастасии будет ресурс — она ответит тебе здесь.\n\nА пока можешь вернуться в Telegram-канал:\nтам есть ещё короткие практики и поддержка.`,
+        Markup.inlineKeyboard([
+            [Markup.button.url("🏠 Вернуться в канал", CHANNEL_URL)]
+        ])
+    );
+
+    await ctx.replyWithHTML(
+        `Это была разовая практика.\n«Творческий антистресс» — это набор коротких практик для регулярного снижения стресса и напряжения через творчество. Без обучения рисованию и без перегруза.`,
+        Markup.inlineKeyboard([
+            [Markup.button.url("Посмотреть о чем мини-курс", COURSE_URL)]
+        ])
+    );
+}
+
+// Scenario 2: I don't want to send
+bot.action("NO_SEND_EXIT", async (ctx) => {
+    const userId = ctx.from.id;
+    await db.setUserState(userId, 'IDLE'); 
+    await ctx.answerCbQuery();
+    
+    await ctx.replyWithHTML(
+        `Это нормально. В любом случае, мы рады, что ты попробовала и надеемся, что для тебя этот опыт был очень полезен.\n\nА пока можешь вернуться в Telegram-канал, там еще будет много интересного ☘`,
+        Markup.inlineKeyboard([
+            [Markup.button.url("🏠 Вернуться в канал", CHANNEL_URL)]
+        ])
     );
 });
+
+// --- ADMIN & SYSTEM ---
 
 bot.command('stats', (ctx) => {
     const userId = String(ctx.from.id);
@@ -151,11 +303,8 @@ bot.command('stats', (ctx) => {
                 ])
             );
         } catch (e) {
-            console.error("Failed to create or send stats link:", e);
-            ctx.reply("Не удалось создать ссылку на статистику. Проверьте, что переменная окружения BOT_URL установлена корректно.");
+            console.error("Failed to create stats link:", e);
         }
-    } else {
-        console.log(`User ${userId} (not an admin) tried to use /stats command.`);
     }
 });
 
@@ -166,7 +315,7 @@ const adminAuth = basicAuth({
 });
 
 app.get("/", (req, res) => {
-  res.send("Hello! Bot server is running correctly.");
+  res.send("Bot is running with new Art Practice logic.");
 });
 
 app.get("/users", adminAuth, async (req, res) => {
@@ -174,7 +323,6 @@ app.get("/users", adminAuth, async (req, res) => {
         const users = await db.getAllUsers();
         res.render('users', { users });
     } catch (error) {
-        console.error("Error fetching user list:", error);
         res.status(500).send("Error fetching user list");
     }
 });
@@ -190,7 +338,6 @@ app.get("/stats", adminAuth, async (req, res) => {
             currentFilter: month && year ? `за ${month}/${year}` : 'за все время'
         });
     } catch (error) {
-        console.error("Error fetching stats:", error);
         res.status(500).send("Error fetching statistics");
     }
 });
@@ -202,73 +349,14 @@ app.get("/view-photo/:file_id", adminAuth, async (req, res) => {
         const photoUrl = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`;
         res.redirect(photoUrl);
     } catch (error) {
-        console.error("Error redirecting to photo:", error);
         res.status(404).send("File not found or link expired.");
     }
 });
 
-
-
-// Новый, универсальный обработчик для постов в канале
-bot.on('channel_post', async (ctx) => {
-  const post = ctx.channelPost;
-
-  if (post.video) {
-    const video = post.video;
-    const caption = post.caption?.trim().toLowerCase();
-    
-    if (caption === "add") {
-      const durationMs = video.duration * 1000;
-      await ctx.reply(
-        `<code>${video.file_id}</code>\nДлительность: ${durationMs} мс`,
-        { parse_mode: "HTML" }
-      );
-    }
-  }
-
-  if (post.document) {
-    const document = post.document;
-    const fileName = document.file_name;
-
-    if (fileName === "add.mp4") {
-      const fileId = document.file_id;
-      const fileLink = await ctx.telegram.getFileLink(fileId);
-      const localPath = path.join(__dirname, "add.mp4");
-      const response = await axios({
-        method: "GET",
-        url: fileLink.href,
-        responseType: "stream",
-      });
-      const writer = fs.createWriteStream(localPath);
-      response.data.pipe(writer);
-      await new Promise((resolve, reject) => {
-        writer.on("finish", resolve);
-        writer.on("error", reject);
-      });
-      const sentMsg = await ctx.replyWithVideoNote({ source: localPath });
-      if (sentMsg.video_note) {
-        await ctx.reply(`✅ file_id видео-кружка: ${sentMsg.video_note.file_id}`);
-        await ctx.reply(`Длительность: ${sentMsg.video_note.duration} секунд`);
-      } else {
-        await ctx.reply("⚠️ Что-то пошло не так, видео-кружок не получен.");
-      }
-      fs.unlinkSync(localPath);
-    }
-  }
-});
-
-// TODO: For Prod START
 const secretPath = process.env.SECRET_PATH;
 app.use(bot.webhookCallback(`/${secretPath}`));
 bot.telegram.setWebhook(`${process.env.BOT_URL}/${secretPath}`);
-// TODO: For Prod END
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Bot is running on port ${process.env.PORT || 3000}`);
 });
-
-// TODO: For Dev START
-// bot.launch(() => {
-//     console.log("Bot has been launched via long polling...");
-// });
-// TODO: For Dev END
