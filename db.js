@@ -8,10 +8,10 @@ const pool = new Pool({
 });
 
 /**
- * @description Инициализирует БД.
+ * Инициализация БД с безопасным добавлением новых колонок
  */
 async function init() {
-  const query = `
+  const createTableQuery = `
     CREATE TABLE IF NOT EXISTS users (
       user_id BIGINT PRIMARY KEY,
       username VARCHAR(255),
@@ -25,9 +25,26 @@ async function init() {
       last_photo_message_id BIGINT
     );
   `;
+
+  const newColumns = [
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS current_state VARCHAR(50)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_start_at TIMESTAMPTZ",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_video_at TIMESTAMPTZ",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_completed_at TIMESTAMPTZ",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS feedback_type VARCHAR(50)"
+  ];
+
   try {
-    await pool.query(query);
-    console.log('Database initialized, users table is ready.');
+    await pool.query(createTableQuery);
+    
+    for (const query of newColumns) {
+        await pool.query(query).catch(err => {
+            // Игнорируем ошибку duplicate column
+            console.log(`Column check/add: ${err.message}`);
+        });
+    }
+    
+    console.log('Database initialized, schema updated for new logic.');
 
   } catch (err) {
     console.error('Error initializing database:', err);
@@ -36,43 +53,21 @@ async function init() {
 }
 
 /**
- * @description Отслеживает действие пользователя.
+ * Обновление состояния пользователя (на каком этапе он находится)
  */
-async function trackUserAction(userId, username, stageColumn) {
-  const allowedColumns = ['pressed_start_at', 'pressed_go_at', 'watched_video_1_at', 'uploaded_photo_at'];
-  if (!allowedColumns.includes(stageColumn)) {
-      console.error(`Invalid stage column: ${stageColumn}`);
-      return;
-  }
-  const query = `
-    INSERT INTO users (user_id, username, ${stageColumn})
-    VALUES ($1, $2, NOW())
-    ON CONFLICT (user_id) DO UPDATE SET
-      ${stageColumn} = NOW(),
-      username = EXCLUDED.username;
-  `;
-  try {
-    await pool.query(query, [userId, username]);
-  } catch (err) {
-    console.error(`Error tracking action for user ${userId}:`, err);
-  }
-}
-
-/**
- * @description Добавляет номер телефона пользователя.
- */
-async function addPhoneNumber(userId, phoneNumber) {
-    const query = `UPDATE users SET phone_number = $1 WHERE user_id = $2`;
+async function setUserState(userId, state) {
+    const query = `
+        INSERT INTO users (user_id, current_state) 
+        VALUES ($1, $2)
+        ON CONFLICT (user_id) DO UPDATE SET current_state = $2;
+    `;
     try {
-        await pool.query(query, [phoneNumber, userId]);
+        await pool.query(query, [userId, state]);
     } catch(err) {
-        console.error(`Error adding phone number for user ${userId}:`, err);
+        console.error(`Error setting state for user ${userId}:`, err);
     }
 }
 
-/**
- * @description Получает данные пользователя по его ID.
- */
 async function getUser(userId) {
     const query = `SELECT * FROM users WHERE user_id = $1`;
     try {
@@ -85,8 +80,43 @@ async function getUser(userId) {
 }
 
 /**
- * @description Добавляет file_id фотографии.
+ * Универсальный трекер действий
  */
+async function trackUserAction(userId, username, stageColumn, additionalData = {}) {
+  const allowedColumns = [
+      'pressed_start_at', 'pressed_go_at', 'watched_video_1_at', 'uploaded_photo_at', // Old
+      'practice_start_at', 'practice_video_at', 'practice_completed_at' // New
+  ];
+  
+  let query = '';
+  if (allowedColumns.includes(stageColumn)) {
+      query = `
+        INSERT INTO users (user_id, username, ${stageColumn})
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (user_id) DO UPDATE SET
+          ${stageColumn} = NOW(),
+          username = EXCLUDED.username;
+      `;
+  } else {
+      query = `
+        INSERT INTO users (user_id, username)
+        VALUES ($1, $2)
+        ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username;
+      `;
+  }
+
+  try {
+    await pool.query(query, [userId, username]);
+    
+    if (additionalData.feedback_type) {
+        await pool.query(`UPDATE users SET feedback_type = $2 WHERE user_id = $1`, [userId, additionalData.feedback_type]);
+    }
+
+  } catch (err) {
+    console.error(`Error tracking action for user ${userId}:`, err);
+  }
+}
+
 async function addPhoto(userId, photoFileId) {
     const query = `
         UPDATE users
@@ -100,9 +130,15 @@ async function addPhoto(userId, photoFileId) {
     }
 }
 
-/**
- * @description Сохраняет ID сообщения, отправленного админу
- */
+async function addPhoneNumber(userId, phoneNumber) {
+    const query = `UPDATE users SET phone_number = $1 WHERE user_id = $2`;
+    try {
+        await pool.query(query, [phoneNumber, userId]);
+    } catch(err) {
+        console.error(`Error adding phone number for user ${userId}:`, err);
+    }
+}
+
 async function setLastPhotoMessageId(userId, messageId) {
     const query = `UPDATE users SET last_photo_message_id = $1 WHERE user_id = $2`;
     try {
@@ -138,9 +174,10 @@ async function getStageStats(month, year) {
     let query = `
         SELECT
           COUNT(created_at) AS entered_bot,
-          COUNT(pressed_start_at) AS pressed_start,
-          COUNT(pressed_go_at) AS pressed_go,
-          COUNT(watched_video_1_at) AS watched_video_1,
+          COUNT(pressed_start_at) AS old_start,
+          COUNT(practice_start_at) AS new_practice_start,
+          COUNT(practice_video_at) AS watched_video,
+          COUNT(practice_completed_at) AS finished_practice,
           COUNT(uploaded_photo_at) AS uploaded_photo
         FROM users
     `;
@@ -153,11 +190,12 @@ async function getStageStats(month, year) {
         const res = await pool.query(query, params);
         const counts = res.rows[0];
         return [
-            { stage: 'entered_bot', count: parseInt(counts.entered_bot, 10) },
-            { stage: 'pressed_start', count: parseInt(counts.pressed_start, 10) },
-            { stage: 'pressed_go', count: parseInt(counts.pressed_go, 10) },
-            { stage: 'watched_video_1', count: parseInt(counts.watched_video_1, 10) },
-            { stage: 'uploaded_photo', count: parseInt(counts.uploaded_photo, 10) },
+            { stage: 'Entered Bot (Total)', count: parseInt(counts.entered_bot, 10) },
+            { stage: 'Started Practice (New)', count: parseInt(counts.new_practice_start, 10) },
+            { stage: 'Watched Video', count: parseInt(counts.watched_video, 10) },
+            { stage: 'Finished Practice', count: parseInt(counts.finished_practice, 10) },
+            { stage: 'Uploaded Photo', count: parseInt(counts.uploaded_photo, 10) },
+            { stage: 'Old Flow Start', count: parseInt(counts.old_start, 10) },
         ];
     } catch (err) {
         console.error('Error getting stage stats:', err);
@@ -175,4 +213,5 @@ module.exports = {
   addPhoneNumber,
   getUser,
   setLastPhotoMessageId,
+  setUserState 
 };
