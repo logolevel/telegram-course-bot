@@ -171,7 +171,7 @@
         </nav>
 
         <div class="toolbar">
-            <button class="btn-sort" onclick="sortByPhotos()">📷 Сначала с фото</button>
+            <button class="btn-sort" onclick="sortByPhotos()">🖼 Сначала с фото</button>
             <button class="btn-sort" onclick="resetSort()">🔄 По умолчанию</button>
         </div>
 
@@ -228,7 +228,7 @@
 
                             <div style="text-align: center;">
                                 <% if (hasPhotos) { %>
-                                    📷
+                                    🖼
                                 <% } %>
                             </div>
 
@@ -312,19 +312,27 @@
                                             const filesCount = user.photo_file_ids.length;
                                             const datesCount = user.photo_dates ? user.photo_dates.length : 0;
                                             const missingDatesCount = filesCount - datesCount;
+
+
+                                            let photos = user.photo_file_ids.map((fileId, index) => {
+                                                const dateIndex = index - missingDatesCount;
+                                                const date = (dateIndex >= 0 && user.photo_dates && user.photo_dates[dateIndex])
+                                                    ? new Date(user.photo_dates[dateIndex])
+                                                    : null;
+                                                // originalIndex нужен, чтобы выводить номер #1, #2 (хронологический)
+                                                return { fileId, date, originalIndex: index + 1 };
+                                            });
+
+                                            photos.reverse();
                                         %>
 
-                                        <% user.photo_file_ids.forEach((fileId, index) => { %>
-                                            <% 
-                                                const dateIndex = index - missingDatesCount;
-                                                const hasDate = dateIndex >= 0 && user.photo_dates && user.photo_dates[dateIndex];
-                                            %>
+                                        <% photos.forEach((photo) => { %>
                                             <div>
-                                                <a href="/view-photo/<%= fileId %>" target="_blank">📄 Открыть фото #<%= index + 1 %></a>
-                                                <% if (hasDate) { %>
+                                                <a href="/view-photo/<%= photo.fileId %>" target="_blank">📄 Открыть фото #<%= photo.originalIndex %></a>
+                                                <% if (photo.date) { %>
                                                     <span class="photo-date">
-                                                        <%= new Date(user.photo_dates[dateIndex]).toLocaleDateString('ru-RU') %> 
-                                                        <%= new Date(user.photo_dates[dateIndex]).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) %>
+                                                        <%= photo.date.toLocaleDateString('ru-RU') %> 
+                                                        <%= photo.date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) %>
                                                     </span>
                                                 <% } %>
                                             </div>
