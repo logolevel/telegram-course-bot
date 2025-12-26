@@ -29,7 +29,9 @@ async function init() {
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_video_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_completed_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS feedback_type VARCHAR(50)",
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT TRUE"
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT TRUE",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_dates TIMESTAMPTZ[] DEFAULT ARRAY[]::TIMESTAMPTZ[]"
   ];
 
   try {
@@ -82,17 +84,20 @@ async function trackUserAction(userId, username, stageColumn, additionalData = {
   let query = '';
   if (allowedColumns.includes(stageColumn)) {
       query = `
-        INSERT INTO users (user_id, username, ${stageColumn})
-        VALUES ($1, $2, NOW())
+        INSERT INTO users (user_id, username, last_activity_at, ${stageColumn})
+        VALUES ($1, $2, NOW(), NOW())
         ON CONFLICT (user_id) DO UPDATE SET
           ${stageColumn} = NOW(),
+          last_activity_at = NOW(),
           username = EXCLUDED.username;
       `;
   } else {
       query = `
-        INSERT INTO users (user_id, username)
-        VALUES ($1, $2)
-        ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username;
+        INSERT INTO users (user_id, username, last_activity_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (user_id) DO UPDATE SET 
+            username = EXCLUDED.username,
+            last_activity_at = NOW();
       `;
   }
 
@@ -112,7 +117,9 @@ async function addPhoto(userId, photoFileId) {
     const query = `
         UPDATE users
         SET photo_file_ids = array_append(photo_file_ids, $2),
-            is_read = false
+            photo_dates = array_append(photo_dates, NOW()),
+            is_read = false,
+            last_activity_at = NOW()
         WHERE user_id = $1;
     `;
     try {
@@ -152,7 +159,7 @@ async function setLastPhotoMessageId(userId, messageId) {
 }
 
 async function getAllUsers() {
-    const query = `SELECT * FROM users ORDER BY is_read ASC, created_at DESC;`;
+    const query = `SELECT * FROM users ORDER BY is_read ASC, last_activity_at DESC NULLS LAST, created_at DESC;`;
     try {
         const res = await pool.query(query);
         return res.rows;

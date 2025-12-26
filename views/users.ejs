@@ -12,9 +12,26 @@
         nav { text-align: center; margin-bottom: 2em; }
         nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; }
 
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+        .btn-sort {
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-sort:hover { background-color: #dee2e6; }
+        .btn-sort.active { background-color: #007bff; color: white; border-color: #007bff; }
+
         .grid-header {
             display: grid;
-            grid-template-columns: 1.5fr 1fr 1fr 1.5fr 1fr 80px;
+            grid-template-columns: 1.5fr 1fr 1.2fr 60px 1.5fr 1fr 80px;
             padding: 12px 15px;
             background-color: #f1f3f5;
             font-weight: bold;
@@ -35,7 +52,7 @@
 
         summary {
             display: grid;
-            grid-template-columns: 1.5fr 1fr 1fr 1.5fr 1fr 80px;
+            grid-template-columns: 1.5fr 1fr 1.2fr 60px 1.5fr 1fr 80px;
             padding: 12px 15px;
             cursor: pointer;
             list-style: none;
@@ -92,6 +109,12 @@
             cursor: pointer;
             accent-color: #28a745;
         }
+        
+        .photo-date {
+            font-size: 11px;
+            color: #888;
+            margin-left: 5px;
+        }
 
         @media screen and (max-width: 900px) {
             .grid-header { display: none; }
@@ -120,10 +143,16 @@
             <a href="/users">👥 Пользователи</a>
         </nav>
 
+        <div class="toolbar">
+            <button class="btn-sort" onclick="sortByPhotos()">📷 Сначала с фото</button>
+            <button class="btn-sort" onclick="resetSort()">🔄 По умолчанию</button>
+        </div>
+
         <div class="grid-header">
             <div>ID / Инфо</div>
             <div>Контакт</div>
-            <div>Дата</div>
+            <div>Активность</div>
+            <div style="text-align: center;">Фото</div>
             <div>Новая практика</div>
             <div>Отклик (Состояние)</div>
             <div style="text-align: center;">Прочитано</div>
@@ -131,8 +160,15 @@
 
         <div id="users-list">
             <% if (users.length > 0) { %>
-                <% users.forEach(user => { %>
-                    <details class="user-row <%= !user.is_read ? 'unread-row' : '' %>" id="row-<%= user.user_id %>">
+                <% users.forEach((user, idx) => { %>
+                    <% const hasPhotos = user.photo_file_ids && user.photo_file_ids.length > 0; %>
+                    
+                    <details 
+                        class="user-row <%= !user.is_read ? 'unread-row' : '' %>" 
+                        id="row-<%= user.user_id %>"
+                        data-original-index="<%= idx %>"
+                        data-has-photos="<%= hasPhotos ? '1' : '0' %>"
+                    >
                         <summary>
                             <div>
                                 <b><%= user.user_id %></b>
@@ -152,7 +188,22 @@
                                 <% } %>
                             </div>
 
-                            <div><%= new Date(user.created_at).toLocaleDateString('ru-RU') %></div>
+                            <div>
+                                <% if (user.last_activity_at) { %>
+                                    <%= new Date(user.last_activity_at).toLocaleDateString('ru-RU') %> 
+                                    <span style="color:#999; font-size:11px;">
+                                        <%= new Date(user.last_activity_at).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) %>
+                                    </span>
+                                <% } else { %>
+                                    <span style="color:#ccc">—</span>
+                                <% } %>
+                            </div>
+
+                            <div style="text-align: center;">
+                                <% if (hasPhotos) { %>
+                                    📷
+                                <% } %>
+                            </div>
 
                             <div>
                                 <span class="stage-icon <%= user.practice_start_at ? 'completed' : 'not-completed' %>" title="Начал практику">Start</span>
@@ -184,12 +235,28 @@
                         </summary>
 
                         <div class="details-content">
+                            <div class="info-block" style="min-width: 150px;">
+                                <h4>📅 Регистрация</h4>
+                                <div><%= new Date(user.created_at).toLocaleDateString('ru-RU') %></div>
+                                <div style="font-size:12px; color:#888;">
+                                    <%= new Date(user.created_at).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) %>
+                                </div>
+                            </div>
+
                             <div class="info-block">
                                 <h4>📸 Фотографии (<%= user.photo_file_ids ? user.photo_file_ids.length : 0 %>)</h4>
-                                <% if (user.photo_file_ids && user.photo_file_ids.length > 0) { %>
+                                <% if (hasPhotos) { %>
                                     <div style="display: flex; flex-direction: column; gap: 5px;">
                                         <% user.photo_file_ids.forEach((fileId, index) => { %>
-                                            <a href="/view-photo/<%= fileId %>" target="_blank">📄 Открыть фото #<%= index + 1 %></a>
+                                            <div>
+                                                <a href="/view-photo/<%= fileId %>" target="_blank">📄 Открыть фото #<%= index + 1 %></a>
+                                                <% if (user.photo_dates && user.photo_dates[index]) { %>
+                                                    <span class="photo-date">
+                                                        <%= new Date(user.photo_dates[index]).toLocaleDateString('ru-RU') %> 
+                                                        <%= new Date(user.photo_dates[index]).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) %>
+                                                    </span>
+                                                <% } %>
+                                            </div>
                                         <% }) %>
                                     </div>
                                 <% } else { %>
@@ -244,6 +311,33 @@
                 checkbox.checked = !isRead;
                 row.classList.toggle('unread-row');
             }
+        }
+
+        function sortByPhotos() {
+            const container = document.getElementById('users-list');
+            const rows = Array.from(container.getElementsByClassName('user-row'));
+
+            rows.sort((a, b) => {
+                const photoA = parseInt(a.getAttribute('data-has-photos'));
+                const photoB = parseInt(b.getAttribute('data-has-photos'));
+
+                return photoB - photoA; 
+            });
+
+            rows.forEach(row => container.appendChild(row));
+        }
+
+        function resetSort() {
+            const container = document.getElementById('users-list');
+            const rows = Array.from(container.getElementsByClassName('user-row'));
+
+            rows.sort((a, b) => {
+                const indexA = parseInt(a.getAttribute('data-original-index'));
+                const indexB = parseInt(b.getAttribute('data-original-index'));
+                return indexA - indexB;
+            });
+
+            rows.forEach(row => container.appendChild(row));
         }
     </script>
 </body>
