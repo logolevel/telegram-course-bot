@@ -7,9 +7,6 @@ const pool = new Pool({
     ssl: isProduction ? { rejectUnauthorized: false } : false,
 });
 
-/**
- * Инициализация БД с безопасным добавлением новых колонок
- */
 async function init() {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS users (
@@ -31,7 +28,8 @@ async function init() {
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_start_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_video_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_completed_at TIMESTAMPTZ",
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS feedback_type VARCHAR(50)"
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS feedback_type VARCHAR(50)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT TRUE"
   ];
 
   try {
@@ -39,12 +37,11 @@ async function init() {
     
     for (const query of newColumns) {
         await pool.query(query).catch(err => {
-            // Игнорируем ошибку duplicate column
             console.log(`Column check/add: ${err.message}`);
         });
     }
     
-    console.log('Database initialized, schema updated for new logic.');
+    console.log('Database initialized, schema updated.');
 
   } catch (err) {
     console.error('Error initializing database:', err);
@@ -52,9 +49,6 @@ async function init() {
   }
 }
 
-/**
- * Обновление состояния пользователя (на каком этапе он находится)
- */
 async function setUserState(userId, state) {
     const query = `
         INSERT INTO users (user_id, current_state) 
@@ -79,13 +73,10 @@ async function getUser(userId) {
     }
 }
 
-/**
- * Универсальный трекер действий
- */
 async function trackUserAction(userId, username, stageColumn, additionalData = {}) {
   const allowedColumns = [
-      'pressed_start_at', 'pressed_go_at', 'watched_video_1_at', 'uploaded_photo_at', // Old
-      'practice_start_at', 'practice_video_at', 'practice_completed_at' // New
+      'pressed_start_at', 'pressed_go_at', 'watched_video_1_at', 'uploaded_photo_at', 
+      'practice_start_at', 'practice_video_at', 'practice_completed_at' 
   ];
   
   let query = '';
@@ -120,13 +111,25 @@ async function trackUserAction(userId, username, stageColumn, additionalData = {
 async function addPhoto(userId, photoFileId) {
     const query = `
         UPDATE users
-        SET photo_file_ids = array_append(photo_file_ids, $2)
+        SET photo_file_ids = array_append(photo_file_ids, $2),
+            is_read = false
         WHERE user_id = $1;
     `;
     try {
         await pool.query(query, [userId, photoFileId]);
     } catch(err) {
         console.error(`Error adding photo for user ${userId}:`, err);
+    }
+}
+
+async function setReadStatus(userId, isRead) {
+    const query = `UPDATE users SET is_read = $2 WHERE user_id = $1`;
+    try {
+        await pool.query(query, [userId, isRead]);
+        return true;
+    } catch(err) {
+        console.error(`Error setting read status for user ${userId}:`, err);
+        return false;
     }
 }
 
@@ -149,7 +152,7 @@ async function setLastPhotoMessageId(userId, messageId) {
 }
 
 async function getAllUsers() {
-    const query = `SELECT * FROM users ORDER BY created_at DESC;`;
+    const query = `SELECT * FROM users ORDER BY is_read ASC, created_at DESC;`;
     try {
         const res = await pool.query(query);
         return res.rows;
@@ -207,6 +210,7 @@ module.exports = {
   init,
   trackUserAction,
   addPhoto,
+  setReadStatus,
   getAllUsers,
   getTotalUsers,
   getStageStats,

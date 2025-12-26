@@ -8,6 +8,7 @@ const basicAuth = require('express-basic-auth');
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
 
+app.use(express.json());
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -209,8 +210,6 @@ bot.action("INPUT_TEXT", async (ctx) => {
 });
 
 // 9. HANDLING USER CONTENT (Photo & Text)
-
-// Обработка ФОТО
 bot.on('photo', async (ctx) => {
     const userId = ctx.from.id;
     const username = ctx.from.username;
@@ -243,7 +242,6 @@ bot.on('photo', async (ctx) => {
     }
 });
 
-// Обработка ТЕКСТА
 bot.on('text', async (ctx) => {
     const userId = ctx.from.id;
     const username = ctx.from.username;
@@ -269,9 +267,6 @@ bot.on('text', async (ctx) => {
     } 
 });
 
-// 10. END SCENARIOS
-
-// Scenario 1: Successful send
 async function sendConfirmation(ctx) {
     await ctx.replyWithHTML(
         `Спасибо 🤍\nАнастасия ответит тебе здесь.\n\nЭто была разовая практика. Наш мини-курс «Творческий антистресс» — это набор из 3-х практик для регулярного снижения стресса и напряжения через творчество. Без обучения рисованию и без перегруза. Больше информации ниже.`,
@@ -282,7 +277,6 @@ async function sendConfirmation(ctx) {
     );
 }
 
-// Scenario 2: I don't want to send
 bot.action("NO_SEND_EXIT", async (ctx) => {
     const userId = ctx.from.id;
     await db.setUserState(userId, 'IDLE'); 
@@ -296,8 +290,6 @@ bot.action("NO_SEND_EXIT", async (ctx) => {
         ])
     );
 });
-
-// --- ADMIN & SYSTEM ---
 
 bot.command('stats', (ctx) => {
     const userId = String(ctx.from.id);
@@ -332,6 +324,17 @@ app.get("/users", adminAuth, async (req, res) => {
         res.render('users', { users });
     } catch (error) {
         res.status(500).send("Error fetching user list");
+    }
+});
+
+app.post("/api/users/toggle-read", adminAuth, async (req, res) => {
+    try {
+        const { userId, isRead } = req.body;
+        await db.setReadStatus(userId, isRead);
+        res.json({ success: true, userId, newStatus: isRead });
+    } catch (error) {
+        console.error("API Error:", error);
+        res.status(500).json({ success: false, error: "Database error" });
     }
 });
 

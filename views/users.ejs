@@ -7,35 +7,108 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 1em; background-color: #f4f6f9; color: #333; }
         .container { max-width: 1400px; margin: auto; background-color: #fff; padding: 1em; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1 { text-align: center; }
+        
+        h1 { text-align: center; margin-bottom: 0.5em; }
         nav { text-align: center; margin-bottom: 2em; }
         nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; vertical-align: middle; }
-        th { background-color: #f7f7f7; }
-        tr:nth-child(even) { background-color: #fcfcfc; }
-        td a { color: #007bff; text-decoration: none; }
-        td a:hover { text-decoration: underline; }
-        .photo-list a { display: inline-block; margin-right: 5px; font-size: 12px;}
+
+        .grid-header {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1.5fr 1fr 80px;
+            padding: 12px 15px;
+            background-color: #f1f3f5;
+            font-weight: bold;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        details {
+            margin-bottom: 8px;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        summary {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1.5fr 1fr 80px;
+            padding: 12px 15px;
+            cursor: pointer;
+            list-style: none;
+            align-items: center;
+            font-size: 14px;
+        }
         
-        /* Стили для этапов */
-        .stage-icon { display: inline-block; border-radius: 3px; padding: 2px 4px; text-align: center; color: white; font-size: 11px; margin: 1px; min-width: 30px;}
+        summary::-webkit-details-marker { display: none; }
+
+        summary:hover { background-color: #f8f9fa; }
+
+        .unread-row {
+            background-color: #e8f0fe !important;
+            border-left: 4px solid #1a73e8;
+        }
+        .unread-row summary {
+            font-weight: 600;
+            color: #000;
+        }
+
+        .details-content {
+            padding: 15px;
+            background-color: #fafafa;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .info-block {
+            background: white;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            min-width: 200px;
+        }
+        .info-block h4 { margin: 0 0 10px 0; font-size: 12px; color: #888; text-transform: uppercase; }
+
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        
+        .stage-icon { display: inline-block; border-radius: 3px; padding: 2px 4px; text-align: center; color: white; font-size: 10px; margin: 1px; min-width: 35px;}
         .completed { background-color: #28a745; }
-        .not-completed { background-color: #e9ecef; color: #adb5bd; } /* Серый для непройденных */
+        .not-completed { background-color: #e9ecef; color: #adb5bd; }
         
-        /* Стили для фидбека */
-        .feedback-tag { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .feedback-tag { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
         .fb-easier { background-color: #d4edda; color: #155724; }
         .fb-no-change { background-color: #e2e3e5; color: #383d41; }
         .fb-harder { background-color: #f8d7da; color: #721c24; }
 
-        @media screen and (max-width: 768px) {
-            .container { padding: 0.5em; box-shadow: none; }
-            table, thead, tbody, th, td, tr { display: block; }
-            thead tr { position: absolute; top: -9999px; left: -9999px; }
-            tr { border: 1px solid #ccc; margin-bottom: 1em; border-radius: 8px; background: #fff; padding: 0.5em;}
-            td { border: none; border-bottom: 1px solid #eee; position: relative; padding-left: 50%; text-align: right; }
-            td:before { position: absolute; top: 12px; left: 6px; width: 45%; padding-right: 10px; white-space: nowrap; text-align: left; font-weight: bold; content: attr(data-label); }
+        .read-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #28a745;
+        }
+
+        @media screen and (max-width: 900px) {
+            .grid-header { display: none; }
+            summary { 
+                display: flex; 
+                flex-direction: column; 
+                align-items: flex-start; 
+                gap: 8px;
+                position: relative;
+            }
+            .read-checkbox {
+                position: absolute;
+                top: 15px;
+                right: 15px;
+                transform: scale(1.5);
+            }
+            summary > div { width: 100%; }
         }
     </style>
 </head>
@@ -46,45 +119,48 @@
             <a href="/stats">📊 Статистика</a>
             <a href="/users">👥 Пользователи</a>
         </nav>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID / Инфо</th>
-                    <th>Контакт</th>
-                    <th>Дата</th>
-                    <th>Новая практика</th>
-                    <th>Отклик (Состояние)</th>
-                    <th>Старая воронка</th>
-                    <th>Фото</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (users.length > 0) { %>
-                    <% users.forEach(user => { %>
-                        <tr>
-                            <td data-label="User ID">
-                                <b><%= user.user_id %></b><br>
-                                <small style="color:#888"><%= user.username ? '@'+user.username : 'No username' %></small>
-                            </td>
-                            <td data-label="Контакт">
+
+        <div class="grid-header">
+            <div>ID / Инфо</div>
+            <div>Контакт</div>
+            <div>Дата</div>
+            <div>Новая практика</div>
+            <div>Отклик (Состояние)</div>
+            <div style="text-align: center;">Прочитано</div>
+        </div>
+
+        <div id="users-list">
+            <% if (users.length > 0) { %>
+                <% users.forEach(user => { %>
+                    <details class="user-row <%= !user.is_read ? 'unread-row' : '' %>" id="row-<%= user.user_id %>">
+                        <summary>
+                            <div>
+                                <b><%= user.user_id %></b>
+                                <div style="font-size: 12px; color: #666;">
+                                    <%= user.username ? '@'+user.username : 'Без ника' %>
+                                </div>
+                            </div>
+
+                            <div>
                                 <% if (user.username) { %>
                                     <a href="https://t.me/<%= user.username %>" target="_blank">Написать</a>
                                 <% } else if (user.phone_number) { %>
                                     <% const clean_phone = user.phone_number.startsWith('+') ? user.phone_number : `+${user.phone_number}`; %>
                                     <a href="tel:<%= clean_phone %>"><%= clean_phone %></a>
                                 <% } else { %>
-                                    —
+                                    <span style="color:#ccc">—</span>
                                 <% } %>
-                            </td>
-                            <td data-label="Дата"><%= new Date(user.created_at).toLocaleDateString('ru-RU') %></td>
-                            
-                            <td data-label="Новая практика">
+                            </div>
+
+                            <div><%= new Date(user.created_at).toLocaleDateString('ru-RU') %></div>
+
+                            <div>
                                 <span class="stage-icon <%= user.practice_start_at ? 'completed' : 'not-completed' %>" title="Начал практику">Start</span>
                                 <span class="stage-icon <%= user.practice_video_at ? 'completed' : 'not-completed' %>" title="Смотрел Видео">Video</span>
                                 <span class="stage-icon <%= user.practice_completed_at ? 'completed' : 'not-completed' %>" title="Завершил">End</span>
-                            </td>
+                            </div>
 
-                            <td data-label="Отклик">
+                            <div>
                                 <% if (user.feedback_type === 'easier') { %>
                                     <span class="feedback-tag fb-easier">Легче</span>
                                 <% } else if (user.feedback_type === 'no_change') { %>
@@ -94,31 +170,81 @@
                                 <% } else { %>
                                     <span style="color:#ccc">—</span>
                                 <% } %>
-                            </td>
+                            </div>
 
-                            <td data-label="Старая воронка">
-                                <span class="stage-icon <%= user.pressed_start_at ? 'completed' : 'not-completed' %>">OldStart</span>
-                                <span class="stage-icon <%= user.pressed_go_at ? 'completed' : 'not-completed' %>">Go</span>
-                            </td>
+                            <div style="text-align: center;" onclick="event.stopPropagation()"> 
+                                <input 
+                                    type="checkbox" 
+                                    class="read-checkbox" 
+                                    <%= user.is_read ? 'checked' : '' %> 
+                                    onchange="toggleRead(this, '<%= user.user_id %>')"
+                                    title="Отметить как прочитанное/непрочитанное"
+                                >
+                            </div>
+                        </summary>
 
-                            <td data-label="Фото">
+                        <div class="details-content">
+                            <div class="info-block">
+                                <h4>📸 Фотографии (<%= user.photo_file_ids ? user.photo_file_ids.length : 0 %>)</h4>
                                 <% if (user.photo_file_ids && user.photo_file_ids.length > 0) { %>
-                                    <% user.photo_file_ids.forEach((fileId, index) => { %>
-                                        <a href="/view-photo/<%= fileId %>" target="_blank">📷 <%= index + 1 %></a>
-                                    <% }) %>
+                                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                                        <% user.photo_file_ids.forEach((fileId, index) => { %>
+                                            <a href="/view-photo/<%= fileId %>" target="_blank">📄 Открыть фото #<%= index + 1 %></a>
+                                        <% }) %>
+                                    </div>
                                 <% } else { %>
-                                    <span style="color:#eee">Нет</span>
+                                    <span style="color:#999; font-size: 13px;">Фотографий нет</span>
                                 <% } %>
-                            </td>
-                        </tr>
-                    <% }) %>
-                <% } else { %>
-                    <tr>
-                        <td colspan="7" style="text-align: center;">Пользователей пока нет.</td>
-                    </tr>
-                <% } %>
-            </tbody>
-        </table>
+                            </div>
+
+                            <div class="info-block">
+                                <h4>🕰 Старая воронка</h4>
+                                <div>
+                                    Start: <span class="stage-icon <%= user.pressed_start_at ? 'completed' : 'not-completed' %>">OK</span>
+                                </div>
+                                <div style="margin-top:4px;">
+                                    Go: <span class="stage-icon <%= user.pressed_go_at ? 'completed' : 'not-completed' %>">OK</span>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                <% }) %>
+            <% } else { %>
+                <div style="text-align: center; padding: 20px; color: #666;">Пользователей пока нет.</div>
+            <% } %>
+        </div>
     </div>
+
+    <script>
+        async function toggleRead(checkbox, userId) {
+            const isRead = checkbox.checked;
+            const row = document.getElementById('row-' + userId);
+
+            if (!isRead) {
+                row.classList.add('unread-row');
+            } else {
+                row.classList.remove('unread-row');
+            }
+
+            try {
+                const response = await fetch('/api/users/toggle-read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ userId, isRead })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                alert('Ошибка при обновлении статуса.');
+                checkbox.checked = !isRead;
+                row.classList.toggle('unread-row');
+            }
+        }
+    </script>
 </body>
 </html>
