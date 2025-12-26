@@ -9,8 +9,17 @@
         .container { max-width: 1400px; margin: auto; background-color: #fff; padding: 1em; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         
         h1 { text-align: center; margin-bottom: 0.5em; }
+        
         nav { text-align: center; margin-bottom: 2em; }
-        nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; }
+        nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; font-size: 16px; padding-bottom: 2px; border-bottom: 2px solid transparent; }
+        nav a:hover { text-decoration: none; border-bottom-color: #007bff; }
+
+        nav a.active {
+            color: #333;
+            border-bottom-color: #333;
+            pointer-events: none;
+            cursor: default;
+        }
 
         .toolbar {
             display: flex;
@@ -25,9 +34,17 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
+            color: #333;
         }
         .btn-sort:hover { background-color: #dee2e6; }
-        .btn-sort.active { background-color: #007bff; color: white; border-color: #007bff; }
+
+        .btn-sort.active { 
+            background-color: #007bff; 
+            color: white; 
+            border-color: #007bff;
+            cursor: default;
+            pointer-events: none;
+        }
 
         .grid-header {
             display: grid;
@@ -166,13 +183,13 @@
     <div class="container">
         <h1>Список пользователей</h1>
         <nav>
-            <a href="/stats">📊 Статистика</a>
-            <a href="/users">👥 Пользователи</a>
+            <a href="/stats" class="<%= page === 'stats' ? 'active' : '' %>">📊 Статистика</a>
+            <a href="/users" class="<%= page === 'users' ? 'active' : '' %>">👥 Пользователи</a>
         </nav>
 
         <div class="toolbar">
-            <button class="btn-sort" onclick="sortByPhotos()">🖼 Сначала с фото</button>
-            <button class="btn-sort" onclick="resetSort()">🔄 По умолчанию</button>
+            <button id="btn-photo" class="btn-sort" onclick="sortByPhotos()">🖼 Сначала с фото</button>
+            <button id="btn-default" class="btn-sort active" onclick="resetSort()" disabled>🔄 По умолчанию</button>
         </div>
 
         <div class="grid-header">
@@ -313,7 +330,6 @@
                                             const datesCount = user.photo_dates ? user.photo_dates.length : 0;
                                             const missingDatesCount = filesCount - datesCount;
 
-
                                             let photos = user.photo_file_ids.map((fileId, index) => {
                                                 const dateIndex = index - missingDatesCount;
                                                 const date = (dateIndex >= 0 && user.photo_dates && user.photo_dates[dateIndex])
@@ -391,8 +407,24 @@
                 row.classList.toggle('unread-row');
             }
         }
+        
+        function updateButtonState(activeId) {
+            const btnPhoto = document.getElementById('btn-photo');
+            const btnDefault = document.getElementById('btn-default');
+            
+            btnPhoto.classList.remove('active');
+            btnPhoto.disabled = false;
+            btnDefault.classList.remove('active');
+            btnDefault.disabled = false;
+            
+            const activeBtn = document.getElementById(activeId);
+            activeBtn.classList.add('active');
+            activeBtn.disabled = true;
+        }
 
         function sortByPhotos() {
+            updateButtonState('btn-photo');
+            
             const container = document.getElementById('users-list');
             const rows = Array.from(container.getElementsByClassName('user-row'));
 
@@ -406,6 +438,8 @@
         }
 
         function resetSort() {
+            updateButtonState('btn-default');
+            
             const container = document.getElementById('users-list');
             const rows = Array.from(container.getElementsByClassName('user-row'));
 

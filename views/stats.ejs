@@ -9,8 +9,16 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 2em; background-color: #f4f6f9; color: #333; }
         .container { max-width: 900px; margin: auto; background-color: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h1, h2 { text-align: center; color: #1a1a1a; }
+        
         nav { text-align: center; margin-bottom: 2em; }
-        nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; font-size: 18px; }
+        nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; font-size: 18px; padding-bottom: 2px; border-bottom: 2px solid transparent; }
+        nav a:hover { text-decoration: none; border-bottom-color: #007bff; }
+        nav a.active {
+            color: #333;
+            border-bottom-color: #333;
+            pointer-events: none;
+            cursor: default;
+        }
 
         .filter-form { text-align: center; margin-top: 2em; margin-bottom: 2em; background: #f8f9fa; padding: 15px; border-radius: 8px; }
         .filter-form input, .filter-form button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin: 0 5px; }
@@ -23,8 +31,8 @@
         <h1>📊 Статистика по боту</h1>
 
         <nav>
-            <a href="/stats">Статистика</a>
-            <a href="/users">Пользователи</a>
+            <a href="/stats" class="<%= page === 'stats' ? 'active' : '' %>">Статистика</a>
+            <a href="/users" class="<%= page === 'users' ? 'active' : '' %>">Пользователи</a>
         </nav>
         
         <h2>Всего пользователей в базе: <b><%= totalUsers %></b></h2>
@@ -46,10 +54,8 @@
 
     <script>
         const ctx = document.getElementById('funnelChart').getContext('2d');
-        // Данные приходят из db.js, где мы уже задали английские названия этапов в поле 'stage'
         const stageData = <%- JSON.stringify(stageStats) %>;
         
-        // Функция перевода ключей из базы на русский язык для графика
         const getLabel = (serverStageName) => {
             const map = {
                 'Entered Bot (Total)': 'Зашли в бот (Всего)',
@@ -66,19 +72,19 @@
         const dataValues = stageData.map(item => item.count);
 
         new Chart(ctx, {
-            type: 'bar', // bar chart лучше для сравнения этапов
+            type: 'bar', 
             data: {
                 labels: labels,
                 datasets: [{
                     label: 'Пользователи',
                     data: dataValues,
                     backgroundColor: [
-                        'rgba(108, 117, 125, 0.5)', // Entered - Grey
-                        'rgba(40, 167, 69, 0.6)',   // Started - Green
-                        'rgba(23, 162, 184, 0.6)',  // Video - Cyan
-                        'rgba(255, 193, 7, 0.6)',   // Finished - Yellow
-                        'rgba(255, 99, 132, 0.6)',  // Photo - Red
-                        'rgba(200, 200, 200, 0.3)'  // Old - Light Grey
+                        'rgba(108, 117, 125, 0.5)', 
+                        'rgba(40, 167, 69, 0.6)',   
+                        'rgba(23, 162, 184, 0.6)',  
+                        'rgba(255, 193, 7, 0.6)',   
+                        'rgba(255, 99, 132, 0.6)',  
+                        'rgba(200, 200, 200, 0.3)'  
                     ],
                     borderColor: [
                         'rgba(108, 117, 125, 1)',

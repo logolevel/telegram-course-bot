@@ -14,7 +14,7 @@ app.set('views', path.join(__dirname, 'views'));
 
 const adminUserName = process.env.ADMIN_USERNAME;
 const adminIDs = (process.env.ADMIN_ID || "").split(',').map(id => id.trim());
-const mainAdminID = adminIDs[0];
+const mainAdminID = adminIDs[0]; 
 
 const CHANNEL_URL = "https://t.me/art_therapy_artvibe";
 const COURSE_URL = "https://app.lava.top/products/497d8f5b-a8f2-427b-82a3-8450924ca6e3";
@@ -221,7 +221,6 @@ bot.on('photo', async (ctx) => {
         const photoFileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
         const caption = ctx.message.caption || "";
 
-        // ЕСЛИ ЕСТЬ ПОДПИСЬ, СОХРАНЯЕМ ЕЁ КАК СООБЩЕНИЕ
         if (caption) {
             await db.addTextMessage(userId, caption);
         }
@@ -327,7 +326,7 @@ app.get("/", (req, res) => {
 app.get("/users", adminAuth, async (req, res) => {
     try {
         const users = await db.getAllUsers();
-        res.render('users', { users });
+        res.render('users', { users, page: 'users' });
     } catch (error) {
         res.status(500).send("Error fetching user list");
     }
@@ -352,7 +351,8 @@ app.get("/stats", adminAuth, async (req, res) => {
         res.render('stats', {
             totalUsers,
             stageStats,
-            currentFilter: month && year ? `за ${month}/${year}` : 'за все время'
+            currentFilter: month && year ? `за ${month}/${year}` : 'за все время',
+            page: 'stats'
         });
     } catch (error) {
         res.status(500).send("Error fetching statistics");
