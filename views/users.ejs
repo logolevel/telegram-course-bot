@@ -13,7 +13,7 @@
         nav { text-align: center; margin-bottom: 2em; }
         nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; font-size: 16px; padding-bottom: 2px; border-bottom: 2px solid transparent; }
         nav a:hover { text-decoration: none; border-bottom-color: #007bff; }
-
+        
         nav a.active {
             color: #333;
             border-bottom-color: #333;
@@ -26,6 +26,7 @@
             justify-content: flex-end;
             margin-bottom: 10px;
             gap: 10px;
+            flex-wrap: wrap; 
         }
         .btn-sort {
             background-color: #e9ecef;
@@ -37,18 +38,18 @@
             color: #333;
         }
         .btn-sort:hover { background-color: #dee2e6; }
-
+        
         .btn-sort.active { 
             background-color: #007bff; 
             color: white; 
             border-color: #007bff;
             cursor: default;
-            pointer-events: none;
+            pointer-events: none; 
         }
 
         .grid-header {
             display: grid;
-            grid-template-columns: 1.5fr 1fr 1.2fr 60px 1.5fr 1fr 80px;
+            grid-template-columns: 1.5fr 1fr 1.2fr 85px 1.5fr 1fr 80px;
             padding: 12px 15px;
             background-color: #f1f3f5;
             font-weight: bold;
@@ -69,7 +70,7 @@
 
         summary {
             display: grid;
-            grid-template-columns: 1.5fr 1fr 1.2fr 60px 1.5fr 1fr 80px;
+            grid-template-columns: 1.5fr 1fr 1.2fr 85px 1.5fr 1fr 80px;
             padding: 12px 15px;
             cursor: pointer;
             list-style: none;
@@ -108,7 +109,6 @@
         }
         .info-block h4 { margin: 0 0 10px 0; font-size: 12px; color: #888; text-transform: uppercase; }
 
-        /* Styles for messages */
         .messages-list {
             display: flex;
             flex-direction: column;
@@ -188,6 +188,7 @@
         </nav>
 
         <div class="toolbar">
+            <button id="btn-msg" class="btn-sort" onclick="sortByMessages()">💬 Сначала с сообщением</button>
             <button id="btn-photo" class="btn-sort" onclick="sortByPhotos()">🖼 Сначала с фото</button>
             <button id="btn-default" class="btn-sort active" onclick="resetSort()" disabled>🔄 По умолчанию</button>
         </div>
@@ -196,7 +197,7 @@
             <div>ID / Инфо</div>
             <div>Контакт</div>
             <div>Активность</div>
-            <div style="text-align: center;">Фото</div>
+            <div style="text-align: center;">Инфо</div> 
             <div>Новая практика</div>
             <div>Отклик (Состояние)</div>
             <div style="text-align: center;">Прочитано</div>
@@ -206,12 +207,14 @@
             <% if (users.length > 0) { %>
                 <% users.forEach((user, idx) => { %>
                     <% const hasPhotos = user.photo_file_ids && user.photo_file_ids.length > 0; %>
+                    <% const hasMessages = user.text_messages && user.text_messages.length > 0; %>
                     
                     <details 
                         class="user-row <%= !user.is_read ? 'unread-row' : '' %>" 
                         id="row-<%= user.user_id %>"
                         data-original-index="<%= idx %>"
                         data-has-photos="<%= hasPhotos ? '1' : '0' %>"
+                        data-has-messages="<%= hasMessages ? '1' : '0' %>"
                     >
                         <summary>
                             <div>
@@ -243,9 +246,12 @@
                                 <% } %>
                             </div>
 
-                            <div style="text-align: center;">
+                            <div style="text-align: center; letter-spacing: 2px;">
+                                <% if (hasMessages) { %>
+                                    <span title="Есть сообщения">💬</span>
+                                <% } %>
                                 <% if (hasPhotos) { %>
-                                    🖼
+                                    <span title="Есть фото">🖼</span>
                                 <% } %>
                             </div>
 
@@ -292,13 +298,11 @@
                                 <div class="messages-list">
                                     <% if (user.text_messages && user.text_messages.length > 0) { %>
                                         <% 
-                                            // Объединяем тексты и даты в один массив объектов
                                             let msgs = user.text_messages.map((text, i) => ({
                                                 text: text,
                                                 date: (user.text_message_dates && user.text_message_dates[i]) ? new Date(user.text_message_dates[i]) : null
                                             }));
                                             
-                                            // Сортируем: новые сверху
                                             msgs.sort((a, b) => {
                                                 if (!a.date) return 1;
                                                 if (!b.date) return -1;
@@ -335,7 +339,6 @@
                                                 const date = (dateIndex >= 0 && user.photo_dates && user.photo_dates[dateIndex])
                                                     ? new Date(user.photo_dates[dateIndex])
                                                     : null;
-                                                // originalIndex нужен, чтобы выводить номер #1, #2 (хронологический)
                                                 return { fileId, date, originalIndex: index + 1 };
                                             });
 
@@ -409,13 +412,11 @@
         }
         
         function updateButtonState(activeId) {
-            const btnPhoto = document.getElementById('btn-photo');
-            const btnDefault = document.getElementById('btn-default');
-            
-            btnPhoto.classList.remove('active');
-            btnPhoto.disabled = false;
-            btnDefault.classList.remove('active');
-            btnDefault.disabled = false;
+            const buttons = document.querySelectorAll('.btn-sort');
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.disabled = false;
+            });
             
             const activeBtn = document.getElementById(activeId);
             activeBtn.classList.add('active');
@@ -432,6 +433,21 @@
                 const photoA = parseInt(a.getAttribute('data-has-photos'));
                 const photoB = parseInt(b.getAttribute('data-has-photos'));
                 return photoB - photoA; 
+            });
+
+            rows.forEach(row => container.appendChild(row));
+        }
+
+        function sortByMessages() {
+            updateButtonState('btn-msg');
+            
+            const container = document.getElementById('users-list');
+            const rows = Array.from(container.getElementsByClassName('user-row'));
+
+            rows.sort((a, b) => {
+                const msgA = parseInt(a.getAttribute('data-has-messages'));
+                const msgB = parseInt(b.getAttribute('data-has-messages'));
+                return msgB - msgA; 
             });
 
             rows.forEach(row => container.appendChild(row));
