@@ -247,13 +247,23 @@
                                 <h4>📸 Фотографии (<%= user.photo_file_ids ? user.photo_file_ids.length : 0 %>)</h4>
                                 <% if (hasPhotos) { %>
                                     <div style="display: flex; flex-direction: column; gap: 5px;">
+                                        <% 
+                                            const filesCount = user.photo_file_ids.length;
+                                            const datesCount = user.photo_dates ? user.photo_dates.length : 0;
+                                            const missingDatesCount = filesCount - datesCount;
+                                        %>
+
                                         <% user.photo_file_ids.forEach((fileId, index) => { %>
+                                            <% 
+                                                const dateIndex = index - missingDatesCount;
+                                                const hasDate = dateIndex >= 0 && user.photo_dates && user.photo_dates[dateIndex];
+                                            %>
                                             <div>
                                                 <a href="/view-photo/<%= fileId %>" target="_blank">📄 Открыть фото #<%= index + 1 %></a>
-                                                <% if (user.photo_dates && user.photo_dates[index]) { %>
+                                                <% if (hasDate) { %>
                                                     <span class="photo-date">
-                                                        <%= new Date(user.photo_dates[index]).toLocaleDateString('ru-RU') %> 
-                                                        <%= new Date(user.photo_dates[index]).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) %>
+                                                        <%= new Date(user.photo_dates[dateIndex]).toLocaleDateString('ru-RU') %> 
+                                                        <%= new Date(user.photo_dates[dateIndex]).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) %>
                                                     </span>
                                                 <% } %>
                                             </div>
@@ -320,7 +330,6 @@
             rows.sort((a, b) => {
                 const photoA = parseInt(a.getAttribute('data-has-photos'));
                 const photoB = parseInt(b.getAttribute('data-has-photos'));
-
                 return photoB - photoA; 
             });
 
