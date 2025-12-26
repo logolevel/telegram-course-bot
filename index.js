@@ -222,6 +222,11 @@ bot.on('photo', async (ctx) => {
         const photoFileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
         const caption = ctx.message.caption || "";
 
+        // ЕСЛИ ЕСТЬ ПОДПИСЬ, СОХРАНЯЕМ ЕЁ КАК СООБЩЕНИЕ
+        if (caption) {
+            await db.addTextMessage(userId, caption);
+        }
+
         await db.trackUserAction(userId, username, 'uploaded_photo_at');
         await db.addPhoto(userId, photoFileId);
         
@@ -257,6 +262,7 @@ bot.on('text', async (ctx) => {
         const stateText = getFeedbackText(user.feedback_type);
         const adminMsg = `💬 Отзыв/Слово. От: @${username || userId}\nСостояние: ${stateText}\nСообщение: ${text}`;
         
+        await db.addTextMessage(userId, text);
         await ctx.telegram.sendMessage(mainAdminID, adminMsg);
 
         if (!username && adminUserName) {

@@ -91,6 +91,33 @@
         }
         .info-block h4 { margin: 0 0 10px 0; font-size: 12px; color: #888; text-transform: uppercase; }
 
+        /* Styles for messages */
+        .messages-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        }
+        .message-bubble {
+            background-color: #f0f2f5;
+            padding: 10px;
+            border-radius: 12px;
+            border-bottom-left-radius: 2px;
+            position: relative;
+        }
+        .message-text {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+        .message-date {
+            font-size: 10px;
+            color: #888;
+            margin-top: 5px;
+            text-align: right;
+        }
+
         a { color: #007bff; text-decoration: none; }
         a:hover { text-decoration: underline; }
         
@@ -240,6 +267,40 @@
                                 <div><%= new Date(user.created_at).toLocaleDateString('ru-RU') %></div>
                                 <div style="font-size:12px; color:#888;">
                                     <%= new Date(user.created_at).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) %>
+                                </div>
+                            </div>
+
+                            <div class="info-block">
+                                <h4>💬 Сообщения (<%= user.text_messages ? user.text_messages.length : 0 %>)</h4>
+                                <div class="messages-list">
+                                    <% if (user.text_messages && user.text_messages.length > 0) { %>
+                                        <% 
+                                            // Объединяем тексты и даты в один массив объектов
+                                            let msgs = user.text_messages.map((text, i) => ({
+                                                text: text,
+                                                date: (user.text_message_dates && user.text_message_dates[i]) ? new Date(user.text_message_dates[i]) : null
+                                            }));
+                                            
+                                            // Сортируем: новые сверху
+                                            msgs.sort((a, b) => {
+                                                if (!a.date) return 1;
+                                                if (!b.date) return -1;
+                                                return b.date - a.date;
+                                            });
+                                        %>
+                                        <% msgs.forEach(msg => { %>
+                                            <div class="message-bubble">
+                                                <div class="message-text"><%= msg.text %></div>
+                                                <% if (msg.date) { %>
+                                                    <div class="message-date">
+                                                        <%= msg.date.toLocaleDateString('ru-RU') %> <%= msg.date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) %>
+                                                    </div>
+                                                <% } %>
+                                            </div>
+                                        <% }) %>
+                                    <% } else { %>
+                                        <span style="color:#999; font-size: 13px;">Сообщений нет</span>
+                                    <% } %>
                                 </div>
                             </div>
 

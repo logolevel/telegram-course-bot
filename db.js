@@ -31,7 +31,9 @@ async function init() {
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS feedback_type VARCHAR(50)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT TRUE",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ",
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_dates TIMESTAMPTZ[] DEFAULT ARRAY[]::TIMESTAMPTZ[]"
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_dates TIMESTAMPTZ[] DEFAULT ARRAY[]::TIMESTAMPTZ[]",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS text_messages TEXT[] DEFAULT ARRAY[]::TEXT[]",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS text_message_dates TIMESTAMPTZ[] DEFAULT ARRAY[]::TIMESTAMPTZ[]"
   ];
 
   try {
@@ -129,6 +131,22 @@ async function addPhoto(userId, photoFileId) {
     }
 }
 
+async function addTextMessage(userId, text) {
+    const query = `
+        UPDATE users
+        SET text_messages = array_append(text_messages, $2),
+            text_message_dates = array_append(text_message_dates, NOW()),
+            is_read = false,
+            last_activity_at = NOW()
+        WHERE user_id = $1;
+    `;
+    try {
+        await pool.query(query, [userId, text]);
+    } catch(err) {
+        console.error(`Error adding text message for user ${userId}:`, err);
+    }
+}
+
 async function setReadStatus(userId, isRead) {
     const query = `UPDATE users SET is_read = $2 WHERE user_id = $1`;
     try {
@@ -217,6 +235,7 @@ module.exports = {
   init,
   trackUserAction,
   addPhoto,
+  addTextMessage,
   setReadStatus,
   getAllUsers,
   getTotalUsers,
