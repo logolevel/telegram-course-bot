@@ -91,7 +91,6 @@
             color: #000;
         }
 
-        /* НОВЫЙ СТИЛЬ: Бейдж NEW */
         .new-badge {
             background-color: #ff4757;
             color: white;
@@ -102,10 +101,9 @@
             text-transform: uppercase;
             font-weight: 800;
             vertical-align: middle;
-            display: none; /* Скрыт по умолчанию */
+            display: none; 
         }
 
-        /* Показываем бейдж только если строка непрочитана */
         .unread-row .new-badge {
             display: inline-block;
             animation: fadeIn 0.3s;
@@ -234,6 +232,10 @@
                     <% const hasPhotos = user.photo_file_ids && user.photo_file_ids.length > 0; %>
                     <% const hasMessages = user.text_messages && user.text_messages.length > 0; %>
                     
+                    <% 
+                        const lastReadAt = user.last_read_at ? new Date(user.last_read_at) : new Date(0); 
+                    %>
+                    
                     <details 
                         class="user-row <%= !user.is_read ? 'unread-row' : '' %>" 
                         id="row-<%= user.user_id %>"
@@ -335,10 +337,13 @@
                                             });
                                         %>
                                         <% msgs.forEach(msg => { %>
+                                            <% const isNew = msg.date && msg.date > lastReadAt; %>
                                             <div class="message-bubble">
                                                 <div class="message-text">
                                                     <%= msg.text %>
-                                                    <span class="new-badge">NEW</span>
+                                                    <% if (isNew) { %>
+                                                        <span class="new-badge">NEW</span>
+                                                    <% } %>
                                                 </div>
                                                 <% if (msg.date) { %>
                                                     <div class="message-date">
@@ -374,9 +379,12 @@
                                         %>
 
                                         <% photos.forEach((photo) => { %>
+                                            <% const isNew = photo.date && photo.date > lastReadAt; %>
                                             <div>
                                                 <a href="/view-photo/<%= photo.fileId %>" target="_blank">📄 Открыть фото #<%= photo.originalIndex %></a>
-                                                <span class="new-badge">NEW</span>
+                                                <% if (isNew) { %>
+                                                    <span class="new-badge">NEW</span>
+                                                <% } %>
                                                 <% if (photo.date) { %>
                                                     <span class="photo-date">
                                                         <%= photo.date.toLocaleDateString('ru-RU') %> 

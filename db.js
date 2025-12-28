@@ -33,7 +33,8 @@ async function init() {
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_dates TIMESTAMPTZ[] DEFAULT ARRAY[]::TIMESTAMPTZ[]",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS text_messages TEXT[] DEFAULT ARRAY[]::TEXT[]",
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS text_message_dates TIMESTAMPTZ[] DEFAULT ARRAY[]::TIMESTAMPTZ[]"
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS text_message_dates TIMESTAMPTZ[] DEFAULT ARRAY[]::TIMESTAMPTZ[]",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMPTZ DEFAULT NOW()"
   ];
 
   try {
@@ -148,7 +149,12 @@ async function addTextMessage(userId, text) {
 }
 
 async function setReadStatus(userId, isRead) {
-    const query = `UPDATE users SET is_read = $2 WHERE user_id = $1`;
+    const query = `
+        UPDATE users 
+        SET is_read = $2,
+            last_read_at = CASE WHEN $2 = TRUE THEN NOW() ELSE last_read_at END
+        WHERE user_id = $1
+    `;
     try {
         await pool.query(query, [userId, isRead]);
         return true;
