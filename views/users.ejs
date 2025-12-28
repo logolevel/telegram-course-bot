@@ -91,6 +91,31 @@
             color: #000;
         }
 
+        /* НОВЫЙ СТИЛЬ: Бейдж NEW */
+        .new-badge {
+            background-color: #ff4757;
+            color: white;
+            font-size: 9px;
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-left: 6px;
+            text-transform: uppercase;
+            font-weight: 800;
+            vertical-align: middle;
+            display: none; /* Скрыт по умолчанию */
+        }
+
+        /* Показываем бейдж только если строка непрочитана */
+        .unread-row .new-badge {
+            display: inline-block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
         .details-content {
             padding: 15px;
             background-color: #fafafa;
@@ -311,7 +336,10 @@
                                         %>
                                         <% msgs.forEach(msg => { %>
                                             <div class="message-bubble">
-                                                <div class="message-text"><%= msg.text %></div>
+                                                <div class="message-text">
+                                                    <%= msg.text %>
+                                                    <span class="new-badge">NEW</span>
+                                                </div>
                                                 <% if (msg.date) { %>
                                                     <div class="message-date">
                                                         <%= msg.date.toLocaleDateString('ru-RU') %> <%= msg.date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) %>
@@ -348,6 +376,7 @@
                                         <% photos.forEach((photo) => { %>
                                             <div>
                                                 <a href="/view-photo/<%= photo.fileId %>" target="_blank">📄 Открыть фото #<%= photo.originalIndex %></a>
+                                                <span class="new-badge">NEW</span>
                                                 <% if (photo.date) { %>
                                                     <span class="photo-date">
                                                         <%= photo.date.toLocaleDateString('ru-RU') %> 
