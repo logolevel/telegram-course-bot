@@ -6,13 +6,41 @@
     <title>Статистика бота</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 2em; background-color: #f4f6f9; color: #333; }
-        .container { max-width: 900px; margin: auto; background-color: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1, h2 { text-align: center; color: #1a1a1a; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            padding: 2em; 
+            background-color: #f4f6f9; 
+            color: #333; 
+        }
+        .container { 
+            max-width: 900px; 
+            margin: auto; 
+            background-color: #fff; 
+            padding: 2em; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+        }
+        h1, h2 { text-align: center; color: #1a1a1a; margin-top: 0; }
+        h1 { margin-bottom: 20px; font-size: 24px; }
+        h2 { font-size: 18px; color: #555; margin-bottom: 15px; }
         
-        nav { text-align: center; margin-bottom: 2em; }
-        nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; font-size: 18px; padding-bottom: 2px; border-bottom: 2px solid transparent; }
-        nav a:hover { text-decoration: none; border-bottom-color: #007bff; }
+        /* Навигация */
+        nav { 
+            text-align: center; 
+            margin-bottom: 2em; 
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        nav a { 
+            text-decoration: none; 
+            color: #007bff; 
+            font-weight: bold; 
+            font-size: 16px; 
+            padding-bottom: 4px; 
+            border-bottom: 2px solid transparent; 
+        }
+        nav a:hover { border-bottom-color: #007bff; }
         nav a.active {
             color: #333;
             border-bottom-color: #333;
@@ -20,42 +48,124 @@
             cursor: default;
         }
 
-        .filter-form { text-align: center; margin-top: 2em; margin-bottom: 2em; background: #f8f9fa; padding: 15px; border-radius: 8px; }
-        .filter-form input, .filter-form button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin: 0 5px; }
-        .filter-form button { background-color: #007bff; color: white; cursor: pointer; border-color: #007bff; }
-        .filter-form a { color: #6c757d; text-decoration: none; line-height: 40px; margin-left: 10px; font-size: 14px; }
+        /* Форма фильтра */
+        .filter-form { 
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 8px; 
+        }
+        .filter-form input, .filter-form button { 
+            padding: 8px 12px; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            font-size: 14px;
+        }
+        .filter-form input { width: 60px; text-align: center; }
+        .filter-form button { 
+            background-color: #007bff; 
+            color: white; 
+            cursor: pointer; 
+            border-color: #007bff; 
+            font-weight: 500;
+        }
+        .filter-form a { 
+            color: #6c757d; 
+            text-decoration: none; 
+            font-size: 14px; 
+        }
+
+        .chart-container {
+            position: relative; 
+            height: 500px; 
+            width: 100%;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .stat-card {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); border-color: #007bff; }
+        .stat-value { font-size: 24px; font-weight: bold; color: #007bff; margin-bottom: 5px; }
+        .stat-label { font-size: 13px; color: #666; line-height: 1.3; }
+
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .container { padding: 15px; }
+            nav { gap: 15px; }
+            .filter-form { flex-direction: column; align-items: stretch; }
+            .filter-form input { width: 100%; box-sizing: border-box; margin-bottom: 5px;}
+            .filter-form button { width: 100%; }
+            .filter-form div { display: flex; gap: 5px; }
+ 
+            .chart-container { height: 600px; } 
+            
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📊 Статистика по боту</h1>
+        <h1>📊 Статистика</h1>
 
         <nav>
             <a href="/stats" class="<%= page === 'stats' ? 'active' : '' %>">Статистика</a>
             <a href="/users" class="<%= page === 'users' ? 'active' : '' %>">Пользователи</a>
         </nav>
         
-        <h2>Всего пользователей в базе: <b><%= totalUsers %></b></h2>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <span style="font-size: 14px; color: #888;">Пользователей в базе:</span><br>
+            <span style="font-size: 28px; font-weight: bold; color: #333;"><%= totalUsers %></span>
+        </div>
 
         <div class="filter-form">
-            <form action="/stats" method="get">
-                <label for="month">Месяц:</label>
-                <input type="number" id="month" name="month" min="1" max="12" placeholder="MM">
-                <label for="year">Год:</label>
-                <input type="number" id="year" name="year" min="2024" placeholder="YYYY" value="2025">
-                <button type="submit">Фильтровать</button>
-                <a href="/stats">Сбросить</a>
+            <form action="/stats" method="get" style="display: contents;">
+                <div style="display:flex; gap:10px; flex: 1;">
+                    <input type="number" name="month" min="1" max="12" placeholder="ММ" required value="<%= typeof query !== 'undefined' ? query.month : '' %>">
+                    <input type="number" name="year" min="2024" placeholder="ГГГГ" value="2025" required>
+                </div>
+                <button type="submit">Показать</button>
             </form>
+            <div style="text-align: center; margin-top: 10px; width: 100%;">
+                <a href="/stats">Сбросить фильтр</a>
+            </div>
         </div>
 
         <h2>Воронка (<%= currentFilter %>)</h2>
-        <canvas id="funnelChart"></canvas>
+        
+        <div class="chart-container">
+            <canvas id="funnelChart"></canvas>
+        </div>
+
+        <div class="stats-grid">
+            <% stageStats.forEach(function(item) { %>
+                <div class="stat-card">
+                    <div class="stat-value"><%= item.count %></div>
+                    <div class="stat-label" data-label="<%= item.stage %>"><%= item.stage %></div>
+                </div>
+            <% }); %>
+        </div>
     </div>
 
     <script>
-        const ctx = document.getElementById('funnelChart').getContext('2d');
         const stageData = <%- JSON.stringify(stageStats) %>;
-        
+
         const getLabel = (serverStageName) => {
             const map = {
                 'Entered Bot': 'Зашли в бот (всего)',
@@ -65,32 +175,37 @@
                 'Selected State': 'Выбрали состояние',
                 'Uploaded Photo': 'Отправили рисунок',
                 'Wrote Sensation': 'Написали ощущение',
-                'Clicked Course': 'Нажали на COURSE URL',
-                'Clicked Big Course': 'Нажали на BIG COURSE URL'
+                'Clicked Course': 'Нажали: Курс',
+                'Clicked Big Course': 'Нажали: Большой курс'
             };
             return map[serverStageName] || serverStageName;
         };
 
+        document.querySelectorAll('.stat-label').forEach(el => {
+            el.innerText = getLabel(el.getAttribute('data-label'));
+        });
+
+        const ctx = document.getElementById('funnelChart').getContext('2d');
         const labels = stageData.map(item => getLabel(item.stage));
         const dataValues = stageData.map(item => item.count);
 
         new Chart(ctx, {
-            type: 'bar', 
+            type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Пользователи',
+                    label: 'Человек',
                     data: dataValues,
                     backgroundColor: [
-                        'rgba(108, 117, 125, 0.5)', // Entered
-                        'rgba(40, 167, 69, 0.6)',   // Start Practice
-                        'rgba(23, 162, 184, 0.6)',  // Turned On
-                        'rgba(255, 193, 7, 0.6)',   // Watched
-                        'rgba(153, 102, 255, 0.6)', // Selected State
-                        'rgba(255, 99, 132, 0.6)',  // Photo
-                        'rgba(54, 162, 235, 0.6)',  // Sensation
-                        'rgba(255, 159, 64, 0.6)',  // Link 1
-                        'rgba(201, 203, 207, 0.6)'  // Link 2
+                        'rgba(108, 117, 125, 0.5)', 
+                        'rgba(40, 167, 69, 0.6)',   
+                        'rgba(23, 162, 184, 0.6)',  
+                        'rgba(255, 193, 7, 0.6)',   
+                        'rgba(153, 102, 255, 0.6)', 
+                        'rgba(255, 99, 132, 0.6)',  
+                        'rgba(54, 162, 235, 0.6)',  
+                        'rgba(255, 159, 64, 0.6)',  
+                        'rgba(201, 203, 207, 0.6)'  
                     ],
                     borderColor: [
                         'rgba(108, 117, 125, 1)',
@@ -103,19 +218,35 @@
                         'rgba(255, 159, 64, 1)',
                         'rgba(201, 203, 207, 1)'
                     ],
-                    borderWidth: 1
+                    borderWidth: 1,
+                    borderRadius: 4
                 }]
             },
             options: {
+                indexAxis: 'y',
                 responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { stepSize: 1 }
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        titleFont: { size: 14 },
+                        bodyFont: { size: 14 },
+                        padding: 10
                     }
                 },
-                plugins: {
-                    legend: { display: false }
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 },
+                        grid: { color: '#f0f0f0' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { 
+                            font: { size: 12, weight: '500' },
+                            autoSkip: false
+                        }
+                    }
                 }
             }
         });
