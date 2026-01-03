@@ -58,12 +58,15 @@
         
         const getLabel = (serverStageName) => {
             const map = {
-                'Entered Bot (Total)': 'Зашли в бот (Всего)',
-                'Started Practice (New)': 'Начали практику (Новая)',
-                'Watched Video': 'Включили видео',
-                'Finished Practice': 'Завершили практику',
-                'Uploaded Photo': 'Загрузили фото',
-                'Old Flow Start': 'Старая воронка (Start)'
+                'Entered Bot': 'Зашли в бот (всего)',
+                'Started Practice': 'Начали практику',
+                'Turned On Practice': 'Включили Практику',
+                'Marked Watched': 'Отметили "Я посмотрел"',
+                'Selected State': 'Выбрали состояние',
+                'Uploaded Photo': 'Отправили рисунок',
+                'Wrote Sensation': 'Написали ощущение',
+                'Clicked Course': 'Нажали на COURSE URL',
+                'Clicked Big Course': 'Нажали на BIG COURSE URL'
             };
             return map[serverStageName] || serverStageName;
         };
@@ -79,20 +82,26 @@
                     label: 'Пользователи',
                     data: dataValues,
                     backgroundColor: [
-                        'rgba(108, 117, 125, 0.5)', 
-                        'rgba(40, 167, 69, 0.6)',   
-                        'rgba(23, 162, 184, 0.6)',  
-                        'rgba(255, 193, 7, 0.6)',   
-                        'rgba(255, 99, 132, 0.6)',  
-                        'rgba(200, 200, 200, 0.3)'  
+                        'rgba(108, 117, 125, 0.5)', // Entered
+                        'rgba(40, 167, 69, 0.6)',   // Start Practice
+                        'rgba(23, 162, 184, 0.6)',  // Turned On
+                        'rgba(255, 193, 7, 0.6)',   // Watched
+                        'rgba(153, 102, 255, 0.6)', // Selected State
+                        'rgba(255, 99, 132, 0.6)',  // Photo
+                        'rgba(54, 162, 235, 0.6)',  // Sensation
+                        'rgba(255, 159, 64, 0.6)',  // Link 1
+                        'rgba(201, 203, 207, 0.6)'  // Link 2
                     ],
                     borderColor: [
                         'rgba(108, 117, 125, 1)',
                         'rgba(40, 167, 69, 1)',
                         'rgba(23, 162, 184, 1)',
                         'rgba(255, 193, 7, 1)',
+                        'rgba(153, 102, 255, 1)',
                         'rgba(255, 99, 132, 1)',
-                        'rgba(200, 200, 200, 1)'
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(201, 203, 207, 1)'
                     ],
                     borderWidth: 1
                 }]

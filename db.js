@@ -14,8 +14,6 @@ async function init() {
       username VARCHAR(255),
       created_at TIMESTAMPTZ DEFAULT NOW(),
       pressed_start_at TIMESTAMPTZ,
-      pressed_go_at TIMESTAMPTZ,
-      watched_video_1_at TIMESTAMPTZ,
       uploaded_photo_at TIMESTAMPTZ,
       photo_file_ids TEXT[] DEFAULT ARRAY[]::TEXT[],
       phone_number VARCHAR(20),
@@ -27,8 +25,11 @@ async function init() {
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS current_state VARCHAR(50)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_start_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_video_at TIMESTAMPTZ",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS video_watched_confirm_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_completed_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS feedback_type VARCHAR(50)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS clicked_course_at TIMESTAMPTZ",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS clicked_big_course_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT TRUE",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_dates TIMESTAMPTZ[] DEFAULT ARRAY[]::TIMESTAMPTZ[]",
@@ -80,8 +81,9 @@ async function getUser(userId) {
 
 async function trackUserAction(userId, username, stageColumn, additionalData = {}) {
   const allowedColumns = [
-      'pressed_start_at', 'pressed_go_at', 'watched_video_1_at', 'uploaded_photo_at', 
-      'practice_start_at', 'practice_video_at', 'practice_completed_at' 
+      'pressed_start_at', 'uploaded_photo_at', 
+      'practice_start_at', 'practice_video_at', 'practice_completed_at',
+      'video_watched_confirm_at', 'clicked_course_at', 'clicked_big_course_at'
   ];
   
   let query = '';
@@ -208,11 +210,14 @@ async function getStageStats(month, year) {
     let query = `
         SELECT
           COUNT(created_at) AS entered_bot,
-          COUNT(pressed_start_at) AS old_start,
-          COUNT(practice_start_at) AS new_practice_start,
-          COUNT(practice_video_at) AS watched_video,
-          COUNT(practice_completed_at) AS finished_practice,
-          COUNT(uploaded_photo_at) AS uploaded_photo
+          COUNT(practice_start_at) AS started_practice,
+          COUNT(practice_video_at) AS turned_on_practice,
+          COUNT(video_watched_confirm_at) AS marked_watched_video,
+          COUNT(practice_completed_at) AS selected_state,
+          COUNT(uploaded_photo_at) AS uploaded_photo,
+          COUNT(clicked_course_at) AS clicked_course,
+          COUNT(clicked_big_course_at) AS clicked_big_course,
+          COUNT(CASE WHEN array_length(text_messages, 1) > 0 THEN 1 END) AS wrote_sensation
         FROM users
     `;
     const params = [];
@@ -223,13 +228,17 @@ async function getStageStats(month, year) {
     try {
         const res = await pool.query(query, params);
         const counts = res.rows[0];
+
         return [
-            { stage: 'Entered Bot (Total)', count: parseInt(counts.entered_bot, 10) },
-            { stage: 'Started Practice (New)', count: parseInt(counts.new_practice_start, 10) },
-            { stage: 'Watched Video', count: parseInt(counts.watched_video, 10) },
-            { stage: 'Finished Practice', count: parseInt(counts.finished_practice, 10) },
+            { stage: 'Entered Bot', count: parseInt(counts.entered_bot, 10) },
+            { stage: 'Started Practice', count: parseInt(counts.started_practice, 10) },
+            { stage: 'Turned On Practice', count: parseInt(counts.turned_on_practice, 10) },
+            { stage: 'Marked Watched', count: parseInt(counts.marked_watched_video, 10) },
+            { stage: 'Selected State', count: parseInt(counts.selected_state, 10) },
             { stage: 'Uploaded Photo', count: parseInt(counts.uploaded_photo, 10) },
-            { stage: 'Old Flow Start', count: parseInt(counts.old_start, 10) },
+            { stage: 'Wrote Sensation', count: parseInt(counts.wrote_sensation, 10) },
+            { stage: 'Clicked Course', count: parseInt(counts.clicked_course, 10) },
+            { stage: 'Clicked Big Course', count: parseInt(counts.clicked_big_course, 10) }
         ];
     } catch (err) {
         console.error('Error getting stage stats:', err);

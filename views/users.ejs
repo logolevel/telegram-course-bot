@@ -49,7 +49,7 @@
 
         .grid-header {
             display: grid;
-            grid-template-columns: 1.5fr 1fr 1.2fr 85px 1.5fr 1fr 80px;
+            grid-template-columns: 1.5fr 1fr 1.2fr 85px 2fr 1fr 80px;
             padding: 12px 15px;
             background-color: #f1f3f5;
             font-weight: bold;
@@ -70,7 +70,7 @@
 
         summary {
             display: grid;
-            grid-template-columns: 1.5fr 1fr 1.2fr 85px 1.5fr 1fr 80px;
+            grid-template-columns: 1.5fr 1fr 1.2fr 85px 2fr 1fr 80px;
             padding: 12px 15px;
             cursor: pointer;
             list-style: none;
@@ -170,6 +170,7 @@
         
         .stage-icon { display: inline-block; border-radius: 3px; padding: 2px 4px; text-align: center; color: white; font-size: 10px; margin: 1px; min-width: 35px;}
         .completed { background-color: #28a745; }
+        .clicked { background-color: #fd7e14; }
         .not-completed { background-color: #e9ecef; color: #adb5bd; }
         
         .feedback-tag { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
@@ -228,8 +229,8 @@
             <div>Контакт</div>
             <div>Активность</div>
             <div style="text-align: center;">Инфо</div> 
-            <div>Новая практика</div>
-            <div>Отклик (Состояние)</div>
+            <div>Этапы практики</div>
+            <div>Feel State</div>
             <div style="text-align: center;">Прочитано</div>
         </div>
 
@@ -292,7 +293,9 @@
                             <div>
                                 <span class="stage-icon <%= user.practice_start_at ? 'completed' : 'not-completed' %>" title="Начал практику">Start</span>
                                 <span class="stage-icon <%= user.practice_video_at ? 'completed' : 'not-completed' %>" title="Смотрел Видео">Video</span>
-                                <span class="stage-icon <%= user.practice_completed_at ? 'completed' : 'not-completed' %>" title="Завершил">End</span>
+                                <span class="stage-icon <%= user.practice_completed_at ? 'completed' : 'not-completed' %>" title="Выбрал состояние">Feel State</span>
+                                <span class="stage-icon <%= user.clicked_course_at ? 'clicked' : 'not-completed' %>" title="Нажал на курс">Course</span>
+                                <span class="stage-icon <%= user.clicked_big_course_at ? 'clicked' : 'not-completed' %>" title="Нажал на большой курс">BigCourse</span>
                             </div>
 
                             <div>
@@ -405,17 +408,7 @@
                                     <span style="color:#999; font-size: 13px;">Фотографий нет</span>
                                 <% } %>
                             </div>
-
-                            <div class="info-block">
-                                <h4>🕰 Старая воронка</h4>
-                                <div>
-                                    Start: <span class="stage-icon <%= user.pressed_start_at ? 'completed' : 'not-completed' %>">OK</span>
-                                </div>
-                                <div style="margin-top:4px;">
-                                    Go: <span class="stage-icon <%= user.pressed_go_at ? 'completed' : 'not-completed' %>">OK</span>
-                                </div>
                             </div>
-                        </div>
                     </details>
                 <% }) %>
             <% } else { %>

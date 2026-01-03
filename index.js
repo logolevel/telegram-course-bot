@@ -17,10 +17,15 @@ const adminIDs = (process.env.ADMIN_ID || "").split(',').map(id => id.trim());
 const mainAdminID = adminIDs[0];
 
 const CHANNEL_URL = "https://t.me/art_therapy_artvibe";
-const COURSE_URL = "https://app.lava.top/products/497d8f5b-a8f2-427b-82a3-8450924ca6e3";
-const BIG_COURSE_URL = "https://artvibe.carrd.co/";
+const TARGET_COURSE_URL = "https://app.lava.top/products/497d8f5b-a8f2-427b-82a3-8450924ca6e3";
+const TARGET_BIG_COURSE_URL = "https://artvibe.carrd.co/";
 
 const VIDEO_ID_PRACTICE = "BAACAgIAAyEFAASeM37lAAMnaU2eATJSVSSmfCbtVVj9SEEHRV4AAgOMAAJFwXFK5zMhImFGFeg2BA"; 
+
+const getRedirectLink = (type, userId) => {
+    const baseUrl = process.env.BOT_URL || `http://localhost:${process.env.PORT || 3000}`;
+    return `${baseUrl}/r/${type}?uid=${userId}`;
+};
 
 const getFeedbackText = (type) => {
     const map = {
@@ -92,6 +97,8 @@ bot.action("START_VIDEO", async (ctx) => {
 
 bot.action("VIDEO_WATCHED", async (ctx) => {
     const userId = ctx.from.id;
+    await db.trackUserAction(userId, ctx.from.username, 'video_watched_confirm_at');
+    
     await ctx.answerCbQuery();
     await sendResultFixation(ctx, userId);
 });
@@ -138,8 +145,8 @@ bot.action("RESULT_NO_CHANGE", async (ctx) => {
     await ctx.replyWithHTML(
         `Спасибо, что отметила.\nТакое бывает — тело и психика не всегда откликаются сразу. Это не значит, что что-то пошло не так. Иногда внутри слишком много всего и нужен не один контакт, а чуть больше времени и бережности.\n\nЕсли захочешь продолжить, есть два варианта.\n\n📌 «Антистресс» — маленький курс-аптечка, к которому можно возвращаться, когда становится непросто.\n\n📌 Большой курс — для тех, кому хочется идти глубже и исследовать себя через творчество. Практика в этом боте - это одна из практик данного курса.\n\nВыбирай, если и когда почувствуешь, что сейчас это для тебя 🤍`,
         Markup.inlineKeyboard([
-            [Markup.button.url('Подробнее про "Антистресс"', COURSE_URL)],
-            [Markup.button.url("Посмотреть, о чем большой курс", BIG_COURSE_URL)],
+            [Markup.button.url('Подробнее про "Антистресс"', getRedirectLink('course', userId))],
+            [Markup.button.url("Посмотреть, о чем большой курс", getRedirectLink('big_course', userId))],
             [Markup.button.url("🏠 Вернуться в канал", CHANNEL_URL)]
         ])
     );
@@ -169,8 +176,8 @@ bot.action("RESULT_HARDER", async (ctx) => {
     await ctx.replyWithHTML(
         `Спасибо, что написала об этом.\n\nОчень жаль, что тебе сейчас стало тяжелее. Такое иногда бывает - практика может поднять чувства или напряжение, которые раньше были приглушены. Это не значит, что с тобой что-то не так.\n\nСейчас важно быть с собой особенно бережно. Если можешь — сделай паузу, обрати внимание на дыхание, почувствуй опору под ногами.\n\nЕсли захочешь продолжить позже и в более поддерживающем формате, есть варианты, которые можно проходить в своём темпе — без спешки и ожиданий результата.\n\nВыбирай только если и когда почувствуешь, что тебе сейчас это подходит 🤍`,
         Markup.inlineKeyboard([
-            [Markup.button.url('Узнать про короткий "курс-аптечку"', COURSE_URL)],
-            [Markup.button.url("Посмотреть, о чем большой курс", BIG_COURSE_URL)],
+            [Markup.button.url('Узнать про короткий "курс-аптечку"', getRedirectLink('course', userId))],
+            [Markup.button.url("Посмотреть, о чем большой курс", getRedirectLink('big_course', userId))],
             [Markup.button.url("🏠 Вернуться в канал", CHANNEL_URL)]
         ])
     );
@@ -223,7 +230,7 @@ bot.on('photo', async (ctx) => {
              await ctx.reply(`Спасибо за рисунок! У тебя скрыт username, поэтому я не смогу написать тебе в личку. Если нужен личный контакт, напиши: ${adminUserName}`);
         }
 
-        await sendConfirmation(ctx);
+        await sendConfirmation(ctx, userId);
         await db.setUserState(userId, 'COMPLETED');
     } else {
         await ctx.reply("Я получил фото, но сейчас я не ожидаю его в рамках практики. Если ты хотел начать сначала, нажми /start");
@@ -251,17 +258,18 @@ bot.on('text', async (ctx) => {
              await ctx.reply(`Спасибо за сообщение! У тебя скрыт username, поэтому я не смогу написать тебе в личку. Если нужен личный контакт, напиши: ${adminUserName}`);
         }
 
-        await sendConfirmation(ctx);
+        await sendConfirmation(ctx, userId);
         await db.setUserState(userId, 'COMPLETED');
     } 
 });
 
-async function sendConfirmation(ctx) {
+async function sendConfirmation(ctx, userId) {
+    const uid = userId || ctx.from.id;
     await ctx.replyWithHTML(
         `Рисунок получен ✨\n\nАнастасия вскоре ответит тебе.\n\nПока ты ждёшь ответ, можешь сделать следующий шаг — если почувствуешь, что тебе это сейчас подходит.\n\n📌 «Антистресс» — небольшой курс-аптечка на 22 минуты, чтобы мягко поддерживать себя и возвращаться к практикам в моменты, когда напряжение особенно даёт о себе знать.\n\n📌 «Исследуй себя через творчество» — более длительный и спокойный формат для тех, кому важно идти глубже и быть в контакте с собой без спешки. Ты как раз сделала одну практику из этого курса.\n\n\nВыбирай то, что сейчас откликается 🤍`,
         Markup.inlineKeyboard([
-            [Markup.button.url('Подробнее про "Антистресс"', COURSE_URL)],
-            [Markup.button.url("Посмотреть, о чем большой курс", BIG_COURSE_URL)],
+            [Markup.button.url('Подробнее про "Антистресс"', getRedirectLink('course', uid))],
+            [Markup.button.url("Посмотреть, о чем большой курс", getRedirectLink('big_course', uid))],
             [Markup.button.url("🏠 Вернуться в канал", CHANNEL_URL)]
         ])
     );
@@ -275,8 +283,8 @@ bot.action("NO_SEND_EXIT", async (ctx) => {
     await ctx.replyWithHTML(
         `Это нормально. В любом случае, мы рады, что ты попробовала и надеемся, что для тебя этот опыт был очень полезен.\n\nЭто была разовая практика. Наш мини-курс «Творческий антистресс» - это набор из 3-х практик для регулярного снижения стресса и напряжения через творчество. Без обучения рисованию и без перегруза. Больше информации ниже.`,
         Markup.inlineKeyboard([
-            [Markup.button.url('Подробнее про "Антистресс"', COURSE_URL)],
-            [Markup.button.url("Посмотреть, о чем большой курс", BIG_COURSE_URL)],
+            [Markup.button.url('Подробнее про "Антистресс"', getRedirectLink('course', userId))],
+            [Markup.button.url("Посмотреть, о чем большой курс", getRedirectLink('big_course', userId))],
             [Markup.button.url("🏠 Вернуться в канал", CHANNEL_URL)]
         ])
     );
@@ -303,6 +311,22 @@ const adminAuth = basicAuth({
     users: { [process.env.STOREFRONT_ADMIN_USERNAME]: process.env.STOREFRONT_ADMIN_PASSWORD },
     challenge: true,
     realm: 'AdminPanel',
+});
+
+app.get("/r/:type", async (req, res) => {
+    const { type } = req.params;
+    const { uid } = req.query;
+    
+    if (uid) {
+        if (type === 'course') {
+            await db.trackUserAction(uid, null, 'clicked_course_at');
+            return res.redirect(TARGET_COURSE_URL);
+        } else if (type === 'big_course') {
+            await db.trackUserAction(uid, null, 'clicked_big_course_at');
+            return res.redirect(TARGET_BIG_COURSE_URL);
+        }
+    }
+    res.redirect(CHANNEL_URL);
 });
 
 app.get("/", (req, res) => {
