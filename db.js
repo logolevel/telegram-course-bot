@@ -108,11 +108,6 @@ async function trackUserAction(userId, username, stageColumn, additionalData = {
 
   try {
     await pool.query(query, [userId, username]);
-    
-    if (additionalData.feedback_type) {
-        await pool.query(`UPDATE users SET feedback_type = $2 WHERE user_id = $1`, [userId, additionalData.feedback_type]);
-    }
-
   } catch (err) {
     console.error(`Error tracking action for user ${userId}:`, err);
   }
@@ -213,13 +208,13 @@ async function getStageStats(month, year) {
           COUNT(practice_start_at) AS started_practice,
           COUNT(practice_video_at) AS turned_on_practice,
           COUNT(video_watched_confirm_at) AS marked_watched_video,
-          COUNT(practice_completed_at) AS selected_state,
           COUNT(uploaded_photo_at) AS uploaded_photo,
           COUNT(clicked_course_at) AS clicked_course,
           COUNT(clicked_big_course_at) AS clicked_big_course,
           COUNT(CASE WHEN array_length(text_messages, 1) > 0 THEN 1 END) AS wrote_sensation
         FROM users
     `;
+    
     const params = [];
     if (month && year) {
         query += ` WHERE EXTRACT(MONTH FROM created_at) = $1 AND EXTRACT(YEAR FROM created_at) = $2`;
@@ -234,7 +229,6 @@ async function getStageStats(month, year) {
             { stage: 'Started Practice', count: parseInt(counts.started_practice, 10) },
             { stage: 'Turned On Practice', count: parseInt(counts.turned_on_practice, 10) },
             { stage: 'Marked Watched', count: parseInt(counts.marked_watched_video, 10) },
-            { stage: 'Selected State', count: parseInt(counts.selected_state, 10) },
             { stage: 'Uploaded Photo', count: parseInt(counts.uploaded_photo, 10) },
             { stage: 'Wrote Sensation', count: parseInt(counts.wrote_sensation, 10) },
             { stage: 'Clicked Course', count: parseInt(counts.clicked_course, 10) },

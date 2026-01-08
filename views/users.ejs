@@ -49,7 +49,7 @@
 
         .grid-header {
             display: grid;
-            grid-template-columns: 1.5fr 1fr 1.2fr 85px 2fr 1fr 80px;
+            grid-template-columns: 1.5fr 1fr 1.2fr 85px 2fr 80px;
             padding: 12px 15px;
             background-color: #f1f3f5;
             font-weight: bold;
@@ -70,7 +70,7 @@
 
         summary {
             display: grid;
-            grid-template-columns: 1.5fr 1fr 1.2fr 85px 2fr 1fr 80px;
+            grid-template-columns: 1.5fr 1fr 1.2fr 85px 2fr 80px;
             padding: 12px 15px;
             cursor: pointer;
             list-style: none;
@@ -173,11 +173,6 @@
         .clicked { background-color: #fd7e14; }
         .not-completed { background-color: #e9ecef; color: #adb5bd; }
         
-        .feedback-tag { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-        .fb-easier { background-color: #d4edda; color: #155724; }
-        .fb-no-change { background-color: #e2e3e5; color: #383d41; }
-        .fb-harder { background-color: #f8d7da; color: #721c24; }
-
         .read-checkbox {
             width: 20px;
             height: 20px;
@@ -230,7 +225,6 @@
             <div>Активность</div>
             <div style="text-align: center;">Инфо</div> 
             <div>Этапы практики</div>
-            <div>Feel State</div>
             <div style="text-align: center;">Прочитано</div>
         </div>
 
@@ -293,21 +287,8 @@
                             <div>
                                 <span class="stage-icon <%= user.practice_start_at ? 'completed' : 'not-completed' %>" title="Начал практику">Start</span>
                                 <span class="stage-icon <%= user.practice_video_at ? 'completed' : 'not-completed' %>" title="Смотрел Видео">Video</span>
-                                <span class="stage-icon <%= user.practice_completed_at ? 'completed' : 'not-completed' %>" title="Выбрал состояние">Feel State</span>
                                 <span class="stage-icon <%= user.clicked_course_at ? 'clicked' : 'not-completed' %>" title="Нажал на курс">Course</span>
                                 <span class="stage-icon <%= user.clicked_big_course_at ? 'clicked' : 'not-completed' %>" title="Нажал на большой курс">BigCourse</span>
-                            </div>
-
-                            <div>
-                                <% if (user.feedback_type === 'easier') { %>
-                                    <span class="feedback-tag fb-easier">Легче</span>
-                                <% } else if (user.feedback_type === 'no_change') { %>
-                                    <span class="feedback-tag fb-no-change">Без изм.</span>
-                                <% } else if (user.feedback_type === 'harder') { %>
-                                    <span class="feedback-tag fb-harder">Тяжелее</span>
-                                <% } else { %>
-                                    <span style="color:#ccc">—</span>
-                                <% } %>
                             </div>
 
                             <div style="text-align: center;" onclick="event.stopPropagation()"> 

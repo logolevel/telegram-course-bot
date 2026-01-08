@@ -27,15 +27,6 @@ const getRedirectLink = (type, userId) => {
     return `${baseUrl}/r/${type}?uid=${userId}`;
 };
 
-const getFeedbackText = (type) => {
-    const map = {
-        'easier': '🌿 Стало чуть легче',
-        'no_change': '➖ Почти без изменений',
-        'harder': '⚠️ Стало тяжелее'
-    };
-    return map[type] || 'Не указано';
-};
-
 db.init().catch(err => {
   console.error("FATAL: Database initialization failed.", err);
   process.exit(1);
@@ -95,39 +86,23 @@ bot.action("START_VIDEO", async (ctx) => {
     });
 });
 
+// 4. AFTER VIDEO (Directly to input menu)
 bot.action("VIDEO_WATCHED", async (ctx) => {
     const userId = ctx.from.id;
-    await db.trackUserAction(userId, ctx.from.username, 'video_watched_confirm_at');
+    const username = ctx.from.username;
+
+    await db.trackUserAction(userId, username, 'video_watched_confirm_at');
+    await db.trackUserAction(userId, username, 'practice_completed_at'); 
+    
+    await db.setUserState(userId, 'POST_PRACTICE_MENU');
     
     await ctx.answerCbQuery();
-    await sendResultFixation(ctx, userId);
-});
-
-async function sendResultFixation(ctx, userId) {
-    await db.setUserState(userId, 'RESULT_FIXATION');
-    
     try {
         await ctx.editMessageReplyMarkup(undefined);
     } catch (e) { /* ignore */ }
 
-    const message = `Спасибо, что попробовала 🤍\n\nПодумай, изменилось ли что-то в тебе после техники?\n\nДаже если изменилось совсем чуть-чуть — это важно.`;
-    
-    await ctx.replyWithHTML(message, Markup.inlineKeyboard([
-        [Markup.button.callback("🌿 Стало чуть легче", "RESULT_EASIER")],
-        [Markup.button.callback("➖ Почти без изменений", "RESULT_NO_CHANGE")],
-        [Markup.button.callback("⚠️ Стало тяжелее", "RESULT_HARDER")]
-    ]));
-}
-
-// 4. BRANCH: EASIER
-bot.action("RESULT_EASIER", async (ctx) => {
-    const userId = ctx.from.id;
-    await db.trackUserAction(userId, ctx.from.username, 'practice_completed_at', { feedback_type: 'easier' });
-    await db.setUserState(userId, 'EASIER_MENU');
-    
-    await ctx.answerCbQuery();
     await ctx.replyWithHTML(
-        `Это важный сигнал 🤍\nЗначит, такой способ может тебе подходить.\n\nЕсли захочешь, можешь:\n— отправить рисунок\n— или написать пару слов о своих ощущениях\n\nЭто не оценка и не разбор.\nАнастасия посмотрит твой рисунок и лично ответит тебе, мягко подсказав возможные направления для размышлений.\n\nНо отправлять — не обязательно.`,
+        `Спасибо, что попробовала 🤍\n\nЕсли захочешь, можешь:\n— отправить рисунок\n— или написать пару слов о своих ощущениях\n\nЭто не оценка и не разбор.\nАнастасия посмотрит твой рисунок и лично ответит тебе, мягко подсказав возможные направления для размышлений.\n\nНо отправлять — не обязательно.`,
         Markup.inlineKeyboard([
             [Markup.button.callback("📎 Отправить рисунок", "INPUT_DRAWING")],
             [Markup.button.callback("💬 Написать ощущения", "INPUT_TEXT")],
@@ -136,54 +111,7 @@ bot.action("RESULT_EASIER", async (ctx) => {
     );
 });
 
-// 5. BRANCH: NO_CHANGE
-bot.action("RESULT_NO_CHANGE", async (ctx) => {
-    const userId = ctx.from.id;
-    await db.trackUserAction(userId, ctx.from.username, 'practice_completed_at', { feedback_type: 'no_change' });
-    
-    await ctx.answerCbQuery();
-    await ctx.replyWithHTML(
-        `Спасибо, что отметила.\nТакое бывает — тело и психика не всегда откликаются сразу. Это не значит, что что-то пошло не так. Иногда внутри слишком много всего и нужен не один контакт, а чуть больше времени и бережности.\n\nЕсли захочешь продолжить, есть два варианта.\n\n📌 «Антистресс» — маленький курс-аптечка, к которому можно возвращаться, когда становится непросто.\n\n📌 Большой курс — для тех, кому хочется идти глубже и исследовать себя через творчество. Практика в этом боте - это одна из практик данного курса.\n\nВыбирай, если и когда почувствуешь, что сейчас это для тебя 🤍`,
-        Markup.inlineKeyboard([
-            [Markup.button.url('Подробнее про "Антистресс"', getRedirectLink('course', userId))],
-            [Markup.button.url("Посмотреть, о чем большой курс", getRedirectLink('big_course', userId))],
-            [Markup.button.url("🏠 Вернуться в канал", CHANNEL_URL)]
-        ])
-    );
-});
-
-bot.action("GOTO_EASIER_OPTIONS", async (ctx) => {
-    const userId = ctx.from.id;
-    await db.setUserState(userId, 'EASIER_MENU');
-    await ctx.answerCbQuery();
-    await ctx.replyWithHTML(
-        `Хорошо 🤍\n\nЕсли захочешь, можешь отправить рисунок или написать пару слов.`,
-        Markup.inlineKeyboard([
-            [Markup.button.callback("📎 Отправить рисунок", "INPUT_DRAWING")],
-            [Markup.button.callback("💬 Написать ощущения", "INPUT_TEXT")],
-            [Markup.button.callback("↩️ Не хочу отправлять", "NO_SEND_EXIT")]
-        ])
-    );
-});
-
-// 7. BRANCH: HARDER
-bot.action("RESULT_HARDER", async (ctx) => {
-    const userId = ctx.from.id;
-    await db.trackUserAction(userId, ctx.from.username, 'practice_completed_at', { feedback_type: 'harder' });
-    await db.setUserState(userId, 'HARDER_MENU');
-    
-    await ctx.answerCbQuery();
-    await ctx.replyWithHTML(
-        `Спасибо, что написала об этом.\n\nОчень жаль, что тебе сейчас стало тяжелее. Такое иногда бывает - практика может поднять чувства или напряжение, которые раньше были приглушены. Это не значит, что с тобой что-то не так.\n\nСейчас важно быть с собой особенно бережно. Если можешь — сделай паузу, обрати внимание на дыхание, почувствуй опору под ногами.\n\nЕсли захочешь продолжить позже и в более поддерживающем формате, есть варианты, которые можно проходить в своём темпе — без спешки и ожиданий результата.\n\nВыбирай только если и когда почувствуешь, что тебе сейчас это подходит 🤍`,
-        Markup.inlineKeyboard([
-            [Markup.button.url('Узнать про короткий "курс-аптечку"', getRedirectLink('course', userId))],
-            [Markup.button.url("Посмотреть, о чем большой курс", getRedirectLink('big_course', userId))],
-            [Markup.button.url("🏠 Вернуться в канал", CHANNEL_URL)]
-        ])
-    );
-});
-
-// 8. INPUT HANDLERS SETUP
+// 5. INPUT HANDLERS SETUP
 bot.action("INPUT_DRAWING", async (ctx) => {
     const userId = ctx.from.id;
     await db.setUserState(userId, 'WAITING_FOR_CONTENT');
@@ -200,7 +128,7 @@ bot.action("INPUT_TEXT", async (ctx) => {
     await ctx.replyWithHTML(`Я слушаю. Напиши всё, чем хочешь поделиться 🤍`);
 });
 
-// 9. HANDLING USER CONTENT (Photo & Text)
+// 6. HANDLING USER CONTENT (Photo & Text)
 bot.on('photo', async (ctx) => {
     const userId = ctx.from.id;
     const username = ctx.from.username;
@@ -208,7 +136,7 @@ bot.on('photo', async (ctx) => {
     const user = await db.getUser(userId);
     const state = user ? user.current_state : null;
 
-    if (state === 'WAITING_FOR_CONTENT' || state === 'EASIER_MENU' || state === 'HARDER_MENU') {
+    if (state === 'WAITING_FOR_CONTENT' || state === 'POST_PRACTICE_MENU') {
         const photoFileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
         const caption = ctx.message.caption || "";
 
@@ -219,8 +147,7 @@ bot.on('photo', async (ctx) => {
         await db.trackUserAction(userId, username, 'uploaded_photo_at');
         await db.addPhoto(userId, photoFileId);
         
-        const stateText = getFeedbackText(user.feedback_type);
-        const adminCaption = `🎨 Практика. От: @${username || userId}\nСостояние: ${stateText}\nТекст: ${caption}`;
+        const adminCaption = `🎨 Практика (Рисунок). От: @${username || userId}\nТекст: ${caption}`;
         
         const sentMessage = await ctx.telegram.sendPhoto(mainAdminID, photoFileId, { caption: adminCaption });
         
@@ -248,8 +175,7 @@ bot.on('text', async (ctx) => {
     const state = user ? user.current_state : null;
 
     if (state === 'WAITING_FOR_CONTENT') {
-        const stateText = getFeedbackText(user.feedback_type);
-        const adminMsg = `💬 Отзыв/Слово. От: @${username || userId}\nСостояние: ${stateText}\nСообщение: ${text}`;
+        const adminMsg = `💬 Отзыв/Слово. От: @${username || userId}\nСообщение: ${text}`;
         
         await db.addTextMessage(userId, text);
         await ctx.telegram.sendMessage(mainAdminID, adminMsg);
@@ -266,11 +192,11 @@ bot.on('text', async (ctx) => {
 async function sendConfirmation(ctx, userId) {
     const uid = userId || ctx.from.id;
     await ctx.replyWithHTML(
-        `Рисунок получен ✨\n\nАнастасия вскоре ответит тебе.\n\nПока ты ждёшь ответ, можешь сделать следующий шаг — если почувствуешь, что тебе это сейчас подходит.\n\n📌 «Антистресс» — небольшой курс-аптечка на 22 минуты, чтобы мягко поддерживать себя и возвращаться к практикам в моменты, когда напряжение особенно даёт о себе знать.\n\n📌 «Исследуй себя через творчество» — более длительный и спокойный формат для тех, кому важно идти глубже и быть в контакте с собой без спешки. Ты как раз сделала одну практику из этого курса.\n\n\nВыбирай то, что сейчас откликается 🤍`,
+        `Спасибо, что поделилась 🤍\n\nАнастасия вскоре ответит.\n\nИногда уже сам этот шаг — что-то нарисовать и отдать — немного меняет состояние.\n\nПодумай, изменилось ли что-то в тебе. Даже если совсем чуть-чуть — это важно.\n\nКому-то хватает одной разовой практики. Кому-то помогает короткая связка из нескольких практик, чтобы помочь себе здесь и сейчас.\n\nА кто-то в какой-то момент чувствует, что хочется не только облегчения, а глубокой работы над собой - шаг за шагом.\n\n👇🏼 Ниже - возможные шаги, если захочется.`,
         Markup.inlineKeyboard([
-            [Markup.button.url('Подробнее про "Антистресс"', getRedirectLink('course', uid))],
-            [Markup.button.url("Посмотреть, о чем большой курс", getRedirectLink('big_course', uid))],
-            [Markup.button.url("🏠 Вернуться в канал", CHANNEL_URL)]
+            [Markup.button.url('🌱 Поддержка здесь и сейчас', getRedirectLink('course', uid))],
+            [Markup.button.url("🧭 Глубокая работа над собой", getRedirectLink('big_course', uid))],
+            [Markup.button.callback("💬 Задать вопрос Анастасии", "INPUT_TEXT")]
         ])
     );
 }
@@ -283,8 +209,8 @@ bot.action("NO_SEND_EXIT", async (ctx) => {
     await ctx.replyWithHTML(
         `Это нормально. В любом случае, мы рады, что ты попробовала и надеемся, что для тебя этот опыт был очень полезен.\n\nЭто была разовая практика. Наш мини-курс «Творческий антистресс» - это набор из 3-х практик для регулярного снижения стресса и напряжения через творчество. Без обучения рисованию и без перегруза. Больше информации ниже.`,
         Markup.inlineKeyboard([
-            [Markup.button.url('Подробнее про "Антистресс"', getRedirectLink('course', userId))],
-            [Markup.button.url("Посмотреть, о чем большой курс", getRedirectLink('big_course', userId))],
+            [Markup.button.url('🌱 Поддержка здесь и сейчас', getRedirectLink('course', userId))],
+            [Markup.button.url("🧭 Глубокая работа над собой", getRedirectLink('big_course', userId))],
             [Markup.button.url("🏠 Вернуться в канал", CHANNEL_URL)]
         ])
     );
@@ -330,7 +256,7 @@ app.get("/r/:type", async (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("Bot is running with new Art Practice logic.");
+  res.send("Bot is running with new Art Practice logic (No fixation).");
 });
 
 app.get("/users", adminAuth, async (req, res) => {
