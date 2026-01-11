@@ -4,6 +4,7 @@ const db = require("./db");
 const express = require("express");
 const path = require('path');
 const basicAuth = require('express-basic-auth');
+const cron = require('node-cron');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
@@ -30,6 +31,29 @@ const getRedirectLink = (type, userId) => {
 db.init().catch(err => {
   console.error("FATAL: Database initialization failed.", err);
   process.exit(1);
+});
+
+cron.schedule('0 19 * * *', async () => {
+    console.log('Running daily reminder job at 19:00...');
+    const users = await db.getUsersForReminder();
+
+    console.log(`Found ${users.length} users to remind.`);
+
+    for (const user of users) {
+        try {
+            await bot.telegram.sendMessage(user.user_id, 
+                `Привет 🤍\nПрактика всё ещё здесь.\nМожно вернуться, когда будет подходящий момент.\n\nА если хочется понять, что дальше - можно посмотреть без обязательств.`,
+                Markup.inlineKeyboard([
+                    [Markup.button.callback("🔁 Вернуться к практике", "PREPARE_PRACTICE")],
+                    [Markup.button.callback("🎨 Отправить рисунок", "INPUT_DRAWING")],
+                    [Markup.button.callback("👉🏼 Выбрать следующий шаг", "REMINDER_NEXT_STEP")]
+                ])
+            );
+            await db.markReminderSent(user.user_id);
+        } catch (e) {
+            console.error(`Failed to send reminder to ${user.user_id}:`, e.message);
+        }
+    }
 });
 
 // 1. STATE: START
@@ -126,6 +150,39 @@ bot.action("INPUT_TEXT", async (ctx) => {
     await ctx.answerCbQuery();
     await ctx.replyWithHTML(`Я слушаю. Напиши всё, чем хочешь поделиться 🤍`);
 });
+
+bot.action("REMINDER_NEXT_STEP", async (ctx) => {
+    const userId = ctx.from.id;
+    const user = await db.getUser(userId);
+    const state = user ? user.current_state : null;
+
+    await ctx.answerCbQuery();
+
+    if (state === 'PREPARE') {
+        await ctx.replyWithVideo(VIDEO_ID_PRACTICE, {
+            caption: '☝️Арт-практика: "Вулкан"',
+            ...Markup.inlineKeyboard([
+                [Markup.button.callback("✅ Я посмотрел/a видео", "VIDEO_WATCHED")]
+            ])
+        });
+        await db.setUserState(userId, 'WATCHING_VIDEO');
+
+    } else if (state === 'WATCHING_VIDEO') {
+        await db.setUserState(userId, 'POST_PRACTICE_MENU');
+        await ctx.replyWithHTML(
+            `Если захочется — можешь отправить рисунок и пару слов для Анастасии. 🤍\n\nОна посмотрит и ответит мягко, без оценки и «правильно/неправильно».\n\nА если сейчас не хочется делиться — это тоже нормально 🤍`,
+            Markup.inlineKeyboard([
+                [Markup.button.callback("🎨 Отправить рисунок и пару слов", "INPUT_DRAWING")],
+                [Markup.button.callback("Не хочу отправлять", "NO_SEND_EXIT")]
+            ])
+        );
+    } else {
+        await ctx.reply("Похоже, ты уже продвинулась дальше. Можешь продолжить работу через меню:", Markup.inlineKeyboard([
+             [Markup.button.callback("🔁 Вернуться к началу", "PREPARE_PRACTICE")]
+        ]));
+    }
+});
+
 
 // 6. HANDLING USER CONTENT (Photo & Text)
 bot.on('photo', async (ctx) => {

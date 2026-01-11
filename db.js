@@ -35,7 +35,8 @@ async function init() {
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_dates TIMESTAMPTZ[] DEFAULT ARRAY[]::TIMESTAMPTZ[]",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS text_messages TEXT[] DEFAULT ARRAY[]::TEXT[]",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS text_message_dates TIMESTAMPTZ[] DEFAULT ARRAY[]::TIMESTAMPTZ[]",
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMPTZ DEFAULT NOW()"
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMPTZ DEFAULT NOW()",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ"
   ];
 
   try {
@@ -57,9 +58,11 @@ async function init() {
 
 async function setUserState(userId, state) {
     const query = `
-        INSERT INTO users (user_id, current_state) 
-        VALUES ($1, $2)
-        ON CONFLICT (user_id) DO UPDATE SET current_state = $2;
+        INSERT INTO users (user_id, current_state, reminder_sent_at) 
+        VALUES ($1, $2, NULL)
+        ON CONFLICT (user_id) DO UPDATE SET 
+            current_state = $2,
+            reminder_sent_at = NULL; 
     `;
     try {
         await pool.query(query, [userId, state]);
@@ -94,7 +97,8 @@ async function trackUserAction(userId, username, stageColumn, additionalData = {
         ON CONFLICT (user_id) DO UPDATE SET
           ${stageColumn} = NOW(),
           last_activity_at = NOW(),
-          username = EXCLUDED.username;
+          username = EXCLUDED.username,
+          reminder_sent_at = NULL;
       `;
   } else {
       query = `
@@ -102,7 +106,8 @@ async function trackUserAction(userId, username, stageColumn, additionalData = {
         VALUES ($1, $2, NOW())
         ON CONFLICT (user_id) DO UPDATE SET 
             username = EXCLUDED.username,
-            last_activity_at = NOW();
+            last_activity_at = NOW(),
+            reminder_sent_at = NULL;
       `;
   }
 
@@ -119,7 +124,8 @@ async function addPhoto(userId, photoFileId) {
         SET photo_file_ids = array_append(photo_file_ids, $2),
             photo_dates = array_append(photo_dates, NOW()),
             is_read = false,
-            last_activity_at = NOW()
+            last_activity_at = NOW(),
+            reminder_sent_at = NULL
         WHERE user_id = $1;
     `;
     try {
@@ -135,7 +141,8 @@ async function addTextMessage(userId, text) {
         SET text_messages = array_append(text_messages, $2),
             text_message_dates = array_append(text_message_dates, NOW()),
             is_read = false,
-            last_activity_at = NOW()
+            last_activity_at = NOW(),
+            reminder_sent_at = NULL
         WHERE user_id = $1;
     `;
     try {
@@ -240,6 +247,32 @@ async function getStageStats(month, year) {
     }
 }
 
+async function getUsersForReminder() {
+    const query = `
+        SELECT user_id, current_state 
+        FROM users
+        WHERE (current_state = 'PREPARE' OR current_state = 'WATCHING_VIDEO')
+        AND DATE(last_activity_at) = CURRENT_DATE - 1
+        AND reminder_sent_at IS NULL;
+    `;
+    try {
+        const res = await pool.query(query);
+        return res.rows;
+    } catch (err) {
+        console.error('Error fetching users for reminder:', err);
+        return [];
+    }
+}
+
+async function markReminderSent(userId) {
+    const query = `UPDATE users SET reminder_sent_at = NOW() WHERE user_id = $1`;
+    try {
+        await pool.query(query, [userId]);
+    } catch (err) {
+        console.error(`Error marking reminder sent for ${userId}:`, err);
+    }
+}
+
 module.exports = {
   init,
   trackUserAction,
@@ -252,5 +285,7 @@ module.exports = {
   addPhoneNumber,
   getUser,
   setLastPhotoMessageId,
-  setUserState 
+  setUserState,
+  getUsersForReminder,
+  markReminderSent
 };
