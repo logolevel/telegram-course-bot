@@ -33,30 +33,28 @@ db.init().catch(err => {
   process.exit(1);
 });
 
-cron.schedule('0 19 * * *', async () => {
-    console.log('Running daily reminder job at 19:00...');
+cron.schedule('0 * * * *', async () => {
     const users = await db.getUsersForReminder();
 
-    console.log(`Found ${users.length} users to remind.`);
-
-    for (const user of users) {
-        try {
-            await bot.telegram.sendMessage(user.user_id, 
-                `Привет 🤍\nПрактика всё ещё здесь.\nМожно вернуться, когда будет подходящий момент.\n\nА если хочется понять, что дальше - можно посмотреть без обязательств.`,
-                Markup.inlineKeyboard([
-                    [Markup.button.callback("🔁 Вернуться к практике", "PREPARE_PRACTICE")],
-                    [Markup.button.callback("🎨 Отправить рисунок", "INPUT_DRAWING")],
-                    [Markup.button.callback("👉🏼 Выбрать следующий шаг", "REMINDER_NEXT_STEP")]
-                ])
-            );
-            await db.markReminderSent(user.user_id);
-        } catch (e) {
-            console.error(`Failed to send reminder to ${user.user_id}:`, e.message);
+    if (users.length > 0) {
+        for (const user of users) {
+            try {
+                await bot.telegram.sendMessage(user.user_id, 
+                    `Привет 🤍\nПрактика всё ещё здесь.\nМожно вернуться, когда будет подходящий момент.\n\nА если хочется понять, что дальше - можно посмотреть без обязательств.`,
+                    Markup.inlineKeyboard([
+                        [Markup.button.callback("🔁 Вернуться к практике", "PREPARE_PRACTICE")],
+                        [Markup.button.callback("🎨 Отправить рисунок", "INPUT_DRAWING")],
+                        [Markup.button.callback("👉🏼 Выбрать следующий шаг", "REMINDER_NEXT_STEP")]
+                    ])
+                );
+                await db.markReminderSent(user.user_id);
+            } catch (e) {
+                console.error(`Failed to send reminder to ${user.user_id}:`, e.message);
+            }
         }
     }
 });
 
-// 1. STATE: START
 bot.start(async (ctx) => {
   const userId = ctx.from.id;
   const username = ctx.from.username;
@@ -73,7 +71,6 @@ bot.start(async (ctx) => {
   );
 });
 
-// 2. STATE: PREPARE_PRACTICE
 bot.action("PREPARE_PRACTICE", async (ctx) => {
     const userId = ctx.from.id;
     const username = ctx.from.username;
@@ -91,7 +88,6 @@ bot.action("PREPARE_PRACTICE", async (ctx) => {
     );
 });
 
-// 3. STATE: VIDEO
 bot.action("START_VIDEO", async (ctx) => {
     const userId = ctx.from.id;
     const username = ctx.from.username;
@@ -110,7 +106,6 @@ bot.action("START_VIDEO", async (ctx) => {
     });
 });
 
-// 4. AFTER VIDEO (Directly to input menu)
 bot.action("VIDEO_WATCHED", async (ctx) => {
     const userId = ctx.from.id;
     const username = ctx.from.username;
@@ -134,7 +129,6 @@ bot.action("VIDEO_WATCHED", async (ctx) => {
     );
 });
 
-// 5. INPUT HANDLERS SETUP
 bot.action("INPUT_DRAWING", async (ctx) => {
     const userId = ctx.from.id;
     await db.setUserState(userId, 'WAITING_FOR_CONTENT');
@@ -183,8 +177,6 @@ bot.action("REMINDER_NEXT_STEP", async (ctx) => {
     }
 });
 
-
-// 6. HANDLING USER CONTENT (Photo & Text)
 bot.on('photo', async (ctx) => {
     const userId = ctx.from.id;
     const username = ctx.from.username;
@@ -261,7 +253,7 @@ bot.action("NO_SEND_EXIT", async (ctx) => {
     const userId = ctx.from.id;
     await db.setUserState(userId, 'IDLE'); 
     await ctx.answerCbQuery();
-
+    
     await ctx.replyWithHTML(
         `Всё в порядке 🤍\nМожно ничего не отправлять и ничего не объяснять.\n\nИногда важно просто побыть с этим опытом внутри.\n\nЕсли захочется, обрати внимание — изменилось ли что-то в тебе после практики. Даже если совсем чуть-чуть — это важно.`
     );

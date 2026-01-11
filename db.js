@@ -252,8 +252,9 @@ async function getUsersForReminder() {
         SELECT user_id, current_state 
         FROM users
         WHERE (current_state = 'PREPARE' OR current_state = 'WATCHING_VIDEO')
-        AND DATE(last_activity_at) = CURRENT_DATE - 1
-        AND reminder_sent_at IS NULL;
+        AND reminder_sent_at IS NULL
+        AND last_activity_at <= NOW() - INTERVAL '24 hours'
+        AND last_activity_at > NOW() - INTERVAL '48 hours';
     `;
     try {
         const res = await pool.query(query);
