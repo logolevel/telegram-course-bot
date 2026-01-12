@@ -142,7 +142,7 @@ bot.action("INPUT_TEXT", async (ctx) => {
     const userId = ctx.from.id;
     await db.setUserState(userId, 'WAITING_FOR_CONTENT');
     await ctx.answerCbQuery();
-    await ctx.replyWithHTML(`Я слушаю. Напиши всё, чем хочешь поделиться 🤍`);
+    await ctx.replyWithHTML(`Можно прямо здесь задать вопрос про практики или курсы. Я отвечу и помогу сориентироваться 🤍`);
 });
 
 bot.action("REMINDER_NEXT_STEP", async (ctx) => {
