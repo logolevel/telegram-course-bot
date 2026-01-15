@@ -24,7 +24,6 @@ async function init() {
   const newColumns = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS current_state VARCHAR(50)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_start_at TIMESTAMPTZ",
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_video_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS video_watched_confirm_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS practice_completed_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS feedback_type VARCHAR(50)",
@@ -85,7 +84,7 @@ async function getUser(userId) {
 async function trackUserAction(userId, username, stageColumn, additionalData = {}) {
   const allowedColumns = [
       'pressed_start_at', 'uploaded_photo_at', 
-      'practice_start_at', 'practice_video_at', 'practice_completed_at',
+      'practice_start_at', 'practice_completed_at',
       'video_watched_confirm_at', 'clicked_course_at', 'clicked_big_course_at'
   ];
   
@@ -213,7 +212,6 @@ async function getStageStats(month, year) {
         SELECT
           COUNT(created_at) AS entered_bot,
           COUNT(practice_start_at) AS started_practice,
-          COUNT(practice_video_at) AS turned_on_practice,
           COUNT(video_watched_confirm_at) AS marked_watched_video,
           COUNT(uploaded_photo_at) AS uploaded_photo,
           COUNT(clicked_course_at) AS clicked_course,
@@ -234,7 +232,6 @@ async function getStageStats(month, year) {
         return [
             { stage: 'Entered Bot', count: parseInt(counts.entered_bot, 10) },
             { stage: 'Started Practice', count: parseInt(counts.started_practice, 10) },
-            { stage: 'Turned On Practice', count: parseInt(counts.turned_on_practice, 10) },
             { stage: 'Marked Watched', count: parseInt(counts.marked_watched_video, 10) },
             { stage: 'Uploaded Photo', count: parseInt(counts.uploaded_photo, 10) },
             { stage: 'Wrote Sensation', count: parseInt(counts.wrote_sensation, 10) },

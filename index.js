@@ -63,9 +63,9 @@ bot.start(async (ctx) => {
   await db.trackUserAction(userId, username, 'pressed_start_at');
 
   await ctx.replyWithHTML(
-    `Привет 🤍\n\nЕсли ты здесь — возможно, внутри тревожно, шумно или напряжённо.\n\nМы сделаем арт-практику, чтобы стало чуть тише.\n\n<b>Важно:</b>\n— рисовать красиво не нужно\n— здесь нет «правильно» или «неправильно»\n— ты ничего не должна и можешь остановиться в любой момент`,
+    `Привет 🤍\n\nЕсли ты здесь — возможно, внутри тревожно, шумно или напряжённо.\n\nМы сделаем арт-практику, чтобы стало чуть тише.\n\n<b>Важно:</b>\n— рисовать красиво не нужно\n— здесь нет «правильно» или «неправильно»\n— ты ничего не должна и можешь остановиться в любой момент\n\nТакже ты можешь быть здесь просто из любопытства — этого достаточно.`,
     Markup.inlineKeyboard([
-      [Markup.button.callback("▶️ Начать практику", "PREPARE_PRACTICE")],
+      [Markup.button.callback("📹 Включить практику", "PREPARE_PRACTICE")],
       [Markup.button.url("🏠 Вернуться в канал", CHANNEL_URL)]
     ])
   );
@@ -75,28 +75,14 @@ bot.action("PREPARE_PRACTICE", async (ctx) => {
     const userId = ctx.from.id;
     const username = ctx.from.username;
     
-    await db.setUserState(userId, 'PREPARE');
+    await db.setUserState(userId, 'WATCHING_VIDEO');
     await db.trackUserAction(userId, username, 'practice_start_at');
     
     await ctx.answerCbQuery();
+    
     await ctx.replyWithHTML(
-        `Практика займёт около 10 минут.\n\nТебе нужен:\n— лист бумаги\n— цветные карандаши или чем ты любишь рисовать\n\nЭто не обучение и не тест.\nПросто попробуй сделать для себя.`,
-        Markup.inlineKeyboard([
-            [Markup.button.callback("🎥 Включить практику", "START_VIDEO")],
-            [Markup.button.url("↩️ Не сейчас", CHANNEL_URL)]
-        ])
+        `Практика займёт около 10 минут.\n\nТебе нужен:\n— лист бумаги\n— цветные карандаши или чем ты любишь рисовать\n\nЭто не обучение и не тест.\nПросто попробуй сделать для себя.`
     );
-});
-
-bot.action("START_VIDEO", async (ctx) => {
-    const userId = ctx.from.id;
-    const username = ctx.from.username;
-
-    await db.setUserState(userId, 'WATCHING_VIDEO');
-    await db.trackUserAction(userId, username, 'practice_video_at');
-
-    await ctx.answerCbQuery();
-    await ctx.editMessageReplyMarkup(undefined); 
 
     await ctx.replyWithVideo(VIDEO_ID_PRACTICE, {
         caption: '☝️Арт-практика: "Вулкан"',
@@ -142,7 +128,7 @@ bot.action("INPUT_TEXT", async (ctx) => {
     const userId = ctx.from.id;
     await db.setUserState(userId, 'WAITING_FOR_CONTENT');
     await ctx.answerCbQuery();
-    await ctx.replyWithHTML(`Можно прямо здесь задать вопрос про практики или курсы. Я отвечу и помогу сориентироваться 🤍`);
+    await ctx.replyWithHTML(`Я слушаю. Напиши всё, чем хочешь поделиться 🤍`);
 });
 
 bot.action("REMINDER_NEXT_STEP", async (ctx) => {
@@ -152,22 +138,14 @@ bot.action("REMINDER_NEXT_STEP", async (ctx) => {
 
     await ctx.answerCbQuery();
 
-    if (state === 'PREPARE') {
-        await ctx.replyWithVideo(VIDEO_ID_PRACTICE, {
-            caption: '☝️Арт-практика: "Вулкан"',
-            ...Markup.inlineKeyboard([
-                [Markup.button.callback("✅ Я посмотрел/a видео", "VIDEO_WATCHED")]
-            ])
-        });
-        await db.setUserState(userId, 'WATCHING_VIDEO');
-
-    } else if (state === 'WATCHING_VIDEO') {
+    if (state === 'WATCHING_VIDEO') {
         await db.setUserState(userId, 'POST_PRACTICE_MENU');
         await ctx.replyWithHTML(
-            `Если захочется — можешь отправить рисунок и пару слов для Анастасии. 🤍\n\nОна посмотрит и ответит мягко, без оценки и «правильно/неправильно».\n\nА если сейчас не хочется делиться — это тоже нормально 🤍`,
+            `Если ты уже посмотрела видео и готова идти дальше:\n\nЕсли захочется — можешь отправить рисунок и пару слов для Анастасии. 🤍`,
             Markup.inlineKeyboard([
                 [Markup.button.callback("🎨 Отправить рисунок и пару слов", "INPUT_DRAWING")],
-                [Markup.button.callback("Не хочу отправлять", "NO_SEND_EXIT")]
+                [Markup.button.callback("Не хочу отправлять", "NO_SEND_EXIT")],
+                [Markup.button.callback("🎥 Пришлите видео снова", "PREPARE_PRACTICE")]
             ])
         );
     } else {
@@ -309,7 +287,7 @@ app.get("/r/:type", async (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("Bot is running with new Art Practice logic (No fixation).");
+  res.send("Bot is running with updated Start/Practice logic.");
 });
 
 app.get("/users", adminAuth, async (req, res) => {
