@@ -58,12 +58,15 @@
             padding: 15px; 
             border-radius: 8px; 
         }
-        .filter-form input, .filter-form button { 
+
+        .filter-form input, .filter-form button, .btn-reset { 
             padding: 8px 12px; 
             border: 1px solid #ccc; 
             border-radius: 6px; 
             font-size: 14px;
+            box-sizing: border-box;
         }
+
         .filter-form button { 
             background-color: #007bff; 
             color: white; 
@@ -71,10 +74,24 @@
             border-color: #007bff; 
             font-weight: 500;
         }
-        .filter-form a { 
-            color: #6c757d; 
-            text-decoration: none; 
-            font-size: 14px; 
+        .filter-form button:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-reset {
+            background-color: #fd7e14;
+            color: white !important;
+            cursor: pointer;
+            border-color: #fd7e14;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            line-height: normal;
+        }
+        .btn-reset:hover {
+            background-color: #e36d0a;
+            border-color: #e36d0a;
+            text-decoration: none;
         }
 
         .chart-container {
@@ -107,9 +124,16 @@
             .container { padding: 15px; }
             nav { gap: 15px; }
             .filter-form { flex-direction: column; align-items: stretch; }
-            .filter-form input { width: 100%; box-sizing: border-box; margin-bottom: 5px;}
-            .filter-form button { width: 100%; }
-            .filter-form div { display: flex; gap: 5px; }
+            .filter-form input { width: 100%; margin-bottom: 5px;}
+            
+            .filter-form button, .btn-reset { 
+                width: 100%; 
+                text-align: center;
+                margin-top: 5px;
+            }
+            
+            .filter-form div { display: flex; flex-direction: column; gap: 5px; }
+            .filter-form .dates-row { flex-direction: row; }
  
             .chart-container { height: 600px; } 
             
@@ -133,17 +157,16 @@
 
         <div class="filter-form">
             <form action="/stats" method="get" style="display: contents;">
-                <div style="display:flex; gap:10px; flex: 1; align-items: center;">
+                <div style="display:flex; gap:10px; align-items: center;" class="dates-row">
                     <label>От:</label>
                     <input type="date" name="startDate" value="<%= typeof startDate !== 'undefined' ? startDate : '' %>" required>
                     <label>До:</label>
                     <input type="date" name="endDate" value="<%= typeof endDate !== 'undefined' ? endDate : '' %>" required>
                 </div>
+                
                 <button type="submit">Показать</button>
+                <a href="/stats" class="btn-reset">Сбросить</a>
             </form>
-            <div style="text-align: center; margin-top: 10px; width: 100%;">
-                <a href="/stats">Сбросить фильтр</a>
-            </div>
         </div>
 
         <h2>Воронка (<%= currentFilter %>)</h2>
@@ -196,6 +219,7 @@
                     backgroundColor: [
                         'rgba(108, 117, 125, 0.5)', 
                         'rgba(40, 167, 69, 0.6)',   
+                        'rgba(23, 162, 184, 0.6)',  
                         'rgba(255, 193, 7, 0.6)',   
                         'rgba(255, 99, 132, 0.6)',  
                         'rgba(54, 162, 235, 0.6)',  
@@ -207,6 +231,7 @@
                         'rgba(40, 167, 69, 1)',
                         'rgba(23, 162, 184, 1)',
                         'rgba(255, 193, 7, 1)',
+                        'rgba(255, 99, 132, 1)',
                         'rgba(54, 162, 235, 1)',
                         'rgba(255, 159, 64, 1)',
                         'rgba(201, 203, 207, 1)'
