@@ -248,7 +248,7 @@ async function getUsersForReminder() {
     const query = `
         SELECT user_id, current_state 
         FROM users
-        WHERE (current_state = 'PREPARE' OR current_state = 'WATCHING_VIDEO')
+        WHERE (current_state = 'WATCHING_VIDEO')
         AND reminder_sent_at IS NULL
         AND last_activity_at <= NOW() - INTERVAL '24 hours'
         AND last_activity_at > NOW() - INTERVAL '48 hours';
@@ -258,6 +258,24 @@ async function getUsersForReminder() {
         return res.rows;
     } catch (err) {
         console.error('Error fetching users for reminder:', err);
+        return [];
+    }
+}
+
+async function getUsersForStartReminder() {
+    const query = `
+        SELECT user_id
+        FROM users
+        WHERE current_state = 'START'
+        AND reminder_sent_at IS NULL
+        AND practice_start_at IS NULL
+        AND last_activity_at <= NOW() - INTERVAL '4 hours';
+    `;
+    try {
+        const res = await pool.query(query);
+        return res.rows;
+    } catch (err) {
+        console.error('Error fetching users for start reminder:', err);
         return [];
     }
 }
@@ -285,5 +303,6 @@ module.exports = {
   setLastPhotoMessageId,
   setUserState,
   getUsersForReminder,
+  getUsersForStartReminder,
   markReminderSent
 };

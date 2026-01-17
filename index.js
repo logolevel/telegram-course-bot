@@ -34,10 +34,10 @@ db.init().catch(err => {
 });
 
 cron.schedule('0 * * * *', async () => {
-    const users = await db.getUsersForReminder();
+    const activeUsers = await db.getUsersForReminder();
 
-    if (users.length > 0) {
-        for (const user of users) {
+    if (activeUsers.length > 0) {
+        for (const user of activeUsers) {
             try {
                 await bot.telegram.sendMessage(user.user_id, 
                     `Привет 🤍\nПрактика всё ещё здесь.\nМожно вернуться, когда будет подходящий момент.\n\nА если хочется понять, что дальше - можно посмотреть без обязательств.`,
@@ -49,7 +49,31 @@ cron.schedule('0 * * * *', async () => {
                 );
                 await db.markReminderSent(user.user_id);
             } catch (e) {
-                console.error(`Failed to send reminder to ${user.user_id}:`, e.message);
+                console.error(`Failed to send 24h reminder to ${user.user_id}:`, e.message);
+                if (e.response && e.response.error_code === 403) {
+                    await db.markReminderSent(user.user_id);
+                }
+            }
+        }
+    }
+
+    const startUsers = await db.getUsersForStartReminder();
+
+    if (startUsers.length > 0) {
+        for (const user of startUsers) {
+            try {
+                await bot.telegram.sendMessage(user.user_id, 
+                    `Маленькая подсказка 🤍\n\nПрактику можно просто посмотреть — для этого достаточно нажать кнопку ниже.\n\nНичего не начнётся автоматически`,
+                    Markup.inlineKeyboard([
+                        [Markup.button.callback("📹 Включить практику", "PREPARE_PRACTICE")]
+                    ])
+                );
+                await db.markReminderSent(user.user_id);
+            } catch (e) {
+                console.error(`Failed to send start reminder to ${user.user_id}:`, e.message);
+                if (e.response && e.response.error_code === 403) {
+                    await db.markReminderSent(user.user_id);
+                }
             }
         }
     }
