@@ -33,6 +33,19 @@ db.init().catch(err => {
   process.exit(1);
 });
 
+bot.on('my_chat_member', async (ctx) => {
+    const { new_chat_member } = ctx.update.my_chat_member;
+    const userId = ctx.from.id;
+
+    if (new_chat_member.status === 'kicked') {
+        await db.setBlockedStatus(userId, true);
+        console.log(`User ${userId} blocked the bot.`);
+    } else if (new_chat_member.status === 'member') {
+        await db.setBlockedStatus(userId, false);
+        console.log(`User ${userId} unblocked the bot.`);
+    }
+});
+
 cron.schedule('0 * * * *', async () => {
     const activeUsers = await db.getUsersForReminder();
 
@@ -51,6 +64,7 @@ cron.schedule('0 * * * *', async () => {
             } catch (e) {
                 console.error(`Failed to send 24h reminder to ${user.user_id}:`, e.message);
                 if (e.response && e.response.error_code === 403) {
+                    await db.setBlockedStatus(user.user_id, true);
                     await db.markReminderSent(user.user_id);
                 }
             }
@@ -72,6 +86,7 @@ cron.schedule('0 * * * *', async () => {
             } catch (e) {
                 console.error(`Failed to send start reminder to ${user.user_id}:`, e.message);
                 if (e.response && e.response.error_code === 403) {
+                    await db.setBlockedStatus(user.user_id, true);
                     await db.markReminderSent(user.user_id);
                 }
             }
@@ -85,6 +100,7 @@ bot.start(async (ctx) => {
   
   await db.setUserState(userId, 'START');
   await db.trackUserAction(userId, username, 'pressed_start_at');
+  await db.setBlockedStatus(userId, false);
 
   await ctx.replyWithHTML(
     `Привет 🤍\n\nЕсли ты здесь — возможно, внутри тревожно, шумно или напряжённо.\n\nМы сделаем арт-практику, чтобы стало чуть тише.\n\n<b>Важно:</b>\n— рисовать красиво не нужно\n— здесь нет «правильно» или «неправильно»\n— ты ничего не должна и можешь остановиться в любой момент\n\nТакже ты можешь быть здесь просто из любопытства — этого достаточно.`,
@@ -338,6 +354,7 @@ app.get("/stats", adminAuth, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
         const totalUsers = await db.getTotalUsers();
+        const blockedCount = await db.getBlockedUsersCount();
         const stageStats = await db.getStageStats(startDate, endDate);
         
         let filterText = 'за все время';
@@ -347,6 +364,7 @@ app.get("/stats", adminAuth, async (req, res) => {
         
         res.render('stats', {
             totalUsers,
+            blockedCount,
             stageStats,
             currentFilter: filterText,
             startDate: startDate || '',

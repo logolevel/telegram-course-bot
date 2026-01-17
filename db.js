@@ -35,7 +35,8 @@ async function init() {
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS text_messages TEXT[] DEFAULT ARRAY[]::TEXT[]",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS text_message_dates TIMESTAMPTZ[] DEFAULT ARRAY[]::TIMESTAMPTZ[]",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMPTZ DEFAULT NOW()",
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ"
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE"
   ];
 
   try {
@@ -57,8 +58,8 @@ async function init() {
 
 async function setUserState(userId, state) {
     const query = `
-        INSERT INTO users (user_id, current_state, reminder_sent_at) 
-        VALUES ($1, $2, NULL)
+        INSERT INTO users (user_id, current_state, reminder_sent_at, is_blocked) 
+        VALUES ($1, $2, NULL, FALSE)
         ON CONFLICT (user_id) DO UPDATE SET 
             current_state = $2,
             reminder_sent_at = NULL; 
@@ -67,6 +68,19 @@ async function setUserState(userId, state) {
         await pool.query(query, [userId, state]);
     } catch(err) {
         console.error(`Error setting state for user ${userId}:`, err);
+    }
+}
+
+async function setBlockedStatus(userId, isBlocked) {
+    const query = `
+        INSERT INTO users (user_id, is_blocked)
+        VALUES ($1, $2)
+        ON CONFLICT (user_id) DO UPDATE SET is_blocked = $2;
+    `;
+    try {
+        await pool.query(query, [userId, isBlocked]);
+    } catch(err) {
+        console.error(`Error setting blocked status for user ${userId}:`, err);
     }
 }
 
@@ -91,22 +105,24 @@ async function trackUserAction(userId, username, stageColumn, additionalData = {
   let query = '';
   if (allowedColumns.includes(stageColumn)) {
       query = `
-        INSERT INTO users (user_id, username, last_activity_at, ${stageColumn})
-        VALUES ($1, $2, NOW(), NOW())
+        INSERT INTO users (user_id, username, last_activity_at, ${stageColumn}, is_blocked)
+        VALUES ($1, $2, NOW(), NOW(), FALSE)
         ON CONFLICT (user_id) DO UPDATE SET
           ${stageColumn} = NOW(),
           last_activity_at = NOW(),
           username = EXCLUDED.username,
-          reminder_sent_at = NULL;
+          reminder_sent_at = NULL,
+          is_blocked = FALSE;
       `;
   } else {
       query = `
-        INSERT INTO users (user_id, username, last_activity_at)
-        VALUES ($1, $2, NOW())
+        INSERT INTO users (user_id, username, last_activity_at, is_blocked)
+        VALUES ($1, $2, NOW(), FALSE)
         ON CONFLICT (user_id) DO UPDATE SET 
             username = EXCLUDED.username,
             last_activity_at = NOW(),
-            reminder_sent_at = NULL;
+            reminder_sent_at = NULL,
+            is_blocked = FALSE;
       `;
   }
 
@@ -124,7 +140,8 @@ async function addPhoto(userId, photoFileId) {
             photo_dates = array_append(photo_dates, NOW()),
             is_read = false,
             last_activity_at = NOW(),
-            reminder_sent_at = NULL
+            reminder_sent_at = NULL,
+            is_blocked = FALSE
         WHERE user_id = $1;
     `;
     try {
@@ -141,7 +158,8 @@ async function addTextMessage(userId, text) {
             text_message_dates = array_append(text_message_dates, NOW()),
             is_read = false,
             last_activity_at = NOW(),
-            reminder_sent_at = NULL
+            reminder_sent_at = NULL,
+            is_blocked = FALSE
         WHERE user_id = $1;
     `;
     try {
@@ -207,6 +225,17 @@ async function getTotalUsers() {
     }
 }
 
+async function getBlockedUsersCount() {
+    const query = `SELECT COUNT(user_id) FROM users WHERE is_blocked = TRUE;`;
+    try {
+        const res = await pool.query(query);
+        return res.rows[0].count;
+    } catch (err) {
+        console.error('Error getting blocked users:', err);
+        return "0";
+    }
+}
+
 async function getStageStats(startDate, endDate) {
     let query = `
         SELECT
@@ -251,6 +280,7 @@ async function getUsersForReminder() {
         FROM users
         WHERE (current_state = 'WATCHING_VIDEO')
         AND reminder_sent_at IS NULL
+        AND is_blocked = FALSE
         AND last_activity_at <= NOW() - INTERVAL '24 hours'
         AND last_activity_at > NOW() - INTERVAL '48 hours';
     `;
@@ -269,6 +299,7 @@ async function getUsersForStartReminder() {
         FROM users
         WHERE current_state = 'START'
         AND reminder_sent_at IS NULL
+        AND is_blocked = FALSE
         AND practice_start_at IS NULL
         AND last_activity_at <= NOW() - INTERVAL '4 hours';
     `;
@@ -298,11 +329,13 @@ module.exports = {
   setReadStatus,
   getAllUsers,
   getTotalUsers,
+  getBlockedUsersCount,
   getStageStats,
   addPhoneNumber,
   getUser,
   setLastPhotoMessageId,
   setUserState,
+  setBlockedStatus,
   getUsersForReminder,
   getUsersForStartReminder,
   markReminderSent

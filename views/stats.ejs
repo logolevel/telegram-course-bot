@@ -150,9 +150,15 @@
             <a href="/users" class="<%= page === 'users' ? 'active' : '' %>">Пользователи</a>
         </nav>
         
-        <div style="text-align: center; margin-bottom: 20px;">
-            <span style="font-size: 14px; color: #888;">Пользователей в базе:</span><br>
-            <span style="font-size: 28px; font-weight: bold; color: #333;"><%= totalUsers %></span>
+        <div style="display: flex; justify-content: space-around; max-width: 600px; margin: 0 auto 20px auto; flex-wrap: wrap;">
+            <div style="text-align: center; margin-bottom: 10px;">
+                <span style="font-size: 14px; color: #888;">Всего пользователей:</span><br>
+                <span style="font-size: 28px; font-weight: bold; color: #333;"><%= totalUsers %></span>
+            </div>
+            <div style="text-align: center; margin-bottom: 10px;">
+                <span style="font-size: 14px; color: #888;">Заблокировали бот:</span><br>
+                <span style="font-size: 28px; font-weight: bold; color: #dc3545;"><%= blockedCount %></span>
+            </div>
         </div>
 
         <div class="filter-form">
