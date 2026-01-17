@@ -207,7 +207,7 @@ async function getTotalUsers() {
     }
 }
 
-async function getStageStats(month, year) {
+async function getStageStats(startDate, endDate) {
     let query = `
         SELECT
           COUNT(created_at) AS entered_bot,
@@ -221,10 +221,11 @@ async function getStageStats(month, year) {
     `;
     
     const params = [];
-    if (month && year) {
-        query += ` WHERE EXTRACT(MONTH FROM created_at) = $1 AND EXTRACT(YEAR FROM created_at) = $2`;
-        params.push(month, year);
+    if (startDate && endDate) {
+        query += ` WHERE created_at::date >= $1 AND created_at::date <= $2`;
+        params.push(startDate, endDate);
     }
+    
     try {
         const res = await pool.query(query, params);
         const counts = res.rows[0];

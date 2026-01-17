@@ -64,7 +64,6 @@
             border-radius: 6px; 
             font-size: 14px;
         }
-        .filter-form input { width: 60px; text-align: center; }
         .filter-form button { 
             background-color: #007bff; 
             color: white; 
@@ -134,9 +133,11 @@
 
         <div class="filter-form">
             <form action="/stats" method="get" style="display: contents;">
-                <div style="display:flex; gap:10px; flex: 1;">
-                    <input type="number" name="month" min="1" max="12" placeholder="ММ" required value="<%= typeof query !== 'undefined' ? query.month : '' %>">
-                    <input type="number" name="year" min="2024" placeholder="ГГГГ" value="2025" required>
+                <div style="display:flex; gap:10px; flex: 1; align-items: center;">
+                    <label>От:</label>
+                    <input type="date" name="startDate" value="<%= typeof startDate !== 'undefined' ? startDate : '' %>" required>
+                    <label>До:</label>
+                    <input type="date" name="endDate" value="<%= typeof endDate !== 'undefined' ? endDate : '' %>" required>
                 </div>
                 <button type="submit">Показать</button>
             </form>
@@ -204,8 +205,8 @@
                     borderColor: [
                         'rgba(108, 117, 125, 1)',
                         'rgba(40, 167, 69, 1)',
+                        'rgba(23, 162, 184, 1)',
                         'rgba(255, 193, 7, 1)',
-                        'rgba(255, 99, 132, 1)',
                         'rgba(54, 162, 235, 1)',
                         'rgba(255, 159, 64, 1)',
                         'rgba(201, 203, 207, 1)'

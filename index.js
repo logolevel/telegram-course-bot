@@ -336,13 +336,21 @@ app.post("/api/users/toggle-read", adminAuth, async (req, res) => {
 
 app.get("/stats", adminAuth, async (req, res) => {
     try {
-        const { month, year } = req.query;
+        const { startDate, endDate } = req.query;
         const totalUsers = await db.getTotalUsers();
-        const stageStats = await db.getStageStats(month, year);
+        const stageStats = await db.getStageStats(startDate, endDate);
+        
+        let filterText = 'за все время';
+        if (startDate && endDate) {
+            filterText = `с ${startDate} по ${endDate}`;
+        }
+        
         res.render('stats', {
             totalUsers,
             stageStats,
-            currentFilter: month && year ? `за ${month}/${year}` : 'за все время',
+            currentFilter: filterText,
+            startDate: startDate || '',
+            endDate: endDate || '',
             page: 'stats'
         });
     } catch (error) {
